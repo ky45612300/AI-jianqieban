@@ -29,6 +29,7 @@ const LABELS = {
     "\u542f\u7528\u540e\u4f1a\u5148\u7528\u811a\u672c\u5224\u65ad\u662f\u5426\u50cf\u4f01\u4e1a\u4fe1\u606f\uff0c\u518d\u628a\u7591\u4f3c\u6587\u672c\u53d1\u7ed9\u4f60\u914d\u7f6e\u7684 OpenAI \u517c\u5bb9\u63a5\u53e3\uff0c\u7531 AI \u505a\u7ed3\u6784\u5316\u63d0\u53d6\u5e76\u5199\u5165\u72ec\u7acb\u76ee\u5f55\u3002",
   aiHeader: "AI \u8bc6\u522b",
   aiOutputDir: "AI \u8f93\u51fa\u76ee\u5f55",
+  aiToggle: "AI \u63d0\u53d6",
   apiKey: "API Key",
   apiKeyDesc:
     "\u5982\u679c\u63a5\u53e3\u9700\u8981\u5bc6\u94a5\u5c31\u5728\u8fd9\u91cc\u586b",
@@ -38,8 +39,13 @@ const LABELS = {
   fetchModels: "\u83b7\u53d6\u6a21\u578b",
   fetchModelsDesc:
     "\u4f1a\u6839\u636e\u4f60\u7684 AI \u63a5\u53e3\u5730\u5740\u81ea\u52a8\u53bb\u62c9\u53d6\u53ef\u7528\u6a21\u578b\u5217\u8868",
+  modelName: "\u6a21\u578b\u540d",
+  modelNameDesc:
+    "\u8c03\u7528\u8be5\u63a5\u53e3\u65f6\u4f7f\u7528\u7684\u6a21\u578b\u540d",
   prompt: "\u9644\u52a0\u63d0\u793a\u8bcd",
   promptDesc: "\u53ef\u9009\u7684\u8865\u5145\u63d0\u793a\u8bcd",
+  promptPlaceholder:
+    "\u53ef\u4ee5\u5199\u4f60\u7684\u8865\u5145\u8bc6\u522b\u8981\u6c42",
   reset: "\u6062\u590d\u9ed8\u8ba4",
   rulesDesc:
     "\u542f\u7528\u540e\u4f1a\u5148\u505a\u811a\u672c\u81ea\u52a8\u5224\u65ad\uff0c\u518d\u6309\u56fa\u5b9a\u89c4\u5219\u8bc6\u522b \u516c\u53f8\u540d\u79f0 / \u59d3\u540d\u6cd5\u4eba / \u7535\u8bdd\u53f7\u7801 / \u90ae\u7bb1 / \u5730\u5740\uff0c\u5e76\u5199\u5165\u72ec\u7acb\u76ee\u5f55\u3002",
@@ -47,6 +53,7 @@ const LABELS = {
   rulesOutputDir: "\u89c4\u5219\u8f93\u51fa\u76ee\u5f55",
   selectDir: "\u9009\u62e9\u76ee\u5f55",
   structuredHeader: "\u7ed3\u6784\u5316\u91c7\u96c6",
+  test: "\u6d4b\u8bd5",
   testAi: "\u6d4b\u8bd5 AI \u63a5\u53e3",
   testAiDesc:
     "\u4f1a\u53d1\u9001\u4e00\u6761\u6700\u5c0f\u6d4b\u8bd5\u8bf7\u6c42\uff0c\u68c0\u67e5\u63a5\u53e3\u8fde\u901a\u6027\u548c JSON \u683c\u5f0f\u3002",
@@ -194,7 +201,7 @@ const StructuredCapture = () => {
           onChange={(value) => {
             clipboardStore.structuredCapture.ai.enabled = value;
           }}
-          title="AI \u63d0\u53d6"
+          title={LABELS.aiToggle}
           value={structuredCapture.ai.enabled}
         />
 
@@ -210,8 +217,8 @@ const StructuredCapture = () => {
         </ProListItem>
 
         <ProListItem
-          description="\u8c03\u7528\u8be5\u63a5\u53e3\u65f6\u4f7f\u7528\u7684\u6a21\u578b\u540d"
-          title="\u6a21\u578b\u540d"
+          description={LABELS.modelNameDesc}
+          title={LABELS.modelName}
         >
           <Space.Compact style={{ width: "100%" }}>
             <AutoComplete
@@ -252,7 +259,7 @@ const StructuredCapture = () => {
             onChange={(event) => {
               clipboardStore.structuredCapture.ai.prompt = event.target.value;
             }}
-            placeholder="\u53ef\u4ee5\u5199\u4f60\u7684\u8865\u5145\u8bc6\u522b\u8981\u6c42"
+            placeholder={LABELS.promptPlaceholder}
             value={structuredCapture.ai.prompt}
           />
         </ProListItem>
@@ -270,7 +277,7 @@ const StructuredCapture = () => {
 
         <ProListItem description={LABELS.testAiDesc} title={LABELS.testAi}>
           <Button loading={testingAi} onClick={handleTestAi} type="primary">
-            \u6d4b\u8bd5
+            {LABELS.test}
           </Button>
         </ProListItem>
 
