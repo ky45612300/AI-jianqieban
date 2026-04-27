@@ -16,6 +16,7 @@ import {
 import type { State } from "@/pages/Main";
 import { getClipboardTextSubtype } from "@/plugins/clipboard";
 import { clipboardStore } from "@/stores/clipboard";
+import { enqueueStructuredCapture } from "@/structured-capture";
 import type { DatabaseSchemaHistory } from "@/types/database";
 import { formatDate } from "@/utils/dayjs";
 
@@ -65,6 +66,7 @@ export const useClipboard = (
       const sqlData = cloneDeep(data);
 
       const { type, value, group, createTime } = data;
+      const structuredText = text?.value ?? data.search ?? "";
 
       if (type === "image") {
         sqlData.value = await fullName(value);
@@ -72,6 +74,10 @@ export const useClipboard = (
 
       if (type === "files") {
         sqlData.value = JSON.stringify(value);
+      }
+
+      if (["text", "html", "rtf"].includes(type) && structuredText) {
+        void enqueueStructuredCapture(structuredText);
       }
 
       const [matched] = await selectHistory((qb) => {

@@ -98,4 +98,20 @@ export interface ClipboardStore {
     unit: number;
     maxCount: number;
   };
+
+  structuredCapture: {
+    rules: {
+      enabled: boolean;
+      outputDir: string;
+    };
+    ai: {
+      enabled: boolean;
+      outputDir: string;
+      endpoint: string;
+      apiKey: string;
+      model: string;
+      prompt: string;
+      timeoutMs: number;
+    };
+  };
 }

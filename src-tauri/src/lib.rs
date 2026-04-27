@@ -1,7 +1,8 @@
 mod core;
+mod structured_capture;
 
 use core::{prevent_default, setup};
-use tauri::{generate_context, Builder, Manager, WindowEvent};
+use tauri::{generate_context, generate_handler, Builder, Manager, WindowEvent};
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_eco_window::{show_main_window, MAIN_WINDOW_LABEL, PREFERENCE_WINDOW_LABEL};
 use tauri_plugin_log::{Target, TargetKind};
@@ -73,6 +74,11 @@ pub fn run() {
         .plugin(tauri_plugin_eco_paste::init())
         // 自定义判断是否自动启动的插件
         .plugin(tauri_plugin_eco_autostart::init())
+        .invoke_handler(generate_handler![
+            structured_capture::append_structured_capture_csv,
+            structured_capture::fetch_structured_capture_ai_models,
+            structured_capture::request_structured_capture_ai_chat_completion
+        ])
         .on_window_event(|window, event| match event {
             // 让 app 保持在后台运行：https://tauri.app/v1/guides/features/system-tray/#preventing-the-app-from-closing
             WindowEvent::CloseRequested { api, .. } => {

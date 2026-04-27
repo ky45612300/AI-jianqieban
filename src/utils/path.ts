@@ -1,6 +1,7 @@
 import { getName } from "@tauri-apps/api/app";
 import { appDataDir, sep } from "@tauri-apps/api/path";
 import { last } from "es-toolkit";
+import { DEFAULT_STRUCTURED_CAPTURE_OUTPUT_DIRS } from "@/constants/structuredCapture";
 import { globalStore } from "@/stores/global";
 import { isDev } from "./is";
 
@@ -72,4 +73,29 @@ export const getSaveWindowStatePath = async () => {
   const extname = isDev() ? "dev.json" : "json";
 
   return join(await appDataDir(), `.window-state.${extname}`);
+};
+
+export const getStructuredCapturePath = (
+  channel: "rules" | "ai",
+  customPath?: string,
+) => {
+  if (customPath) {
+    return join(customPath);
+  }
+
+  return join(DEFAULT_STRUCTURED_CAPTURE_OUTPUT_DIRS[channel]);
+};
+
+export const getStructuredCaptureCsvPath = (
+  channel: "rules" | "ai",
+  customPath?: string,
+) => {
+  return join(getStructuredCapturePath(channel, customPath), "records.csv");
+};
+
+export const getStructuredCaptureStatePath = (
+  channel: "rules" | "ai",
+  customPath?: string,
+) => {
+  return join(getStructuredCapturePath(channel, customPath), ".state.json");
 };

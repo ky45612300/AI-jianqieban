@@ -7,6 +7,7 @@ import AudioSettings from "./components/AudioSettings";
 import AutoPaste from "./components/AutoPaste";
 import OperationButton from "./components/OperationButton";
 import SearchPosition from "./components/SearchPosition";
+import StructuredCapture from "./components/StructuredCapture";
 import WindowPosition from "./components/WindowPosition";
 
 const ClipboardSettings = () => {
@@ -143,6 +144,8 @@ const ClipboardSettings = () => {
           value={content.showOriginalContent}
         />
       </ProList>
+
+      <StructuredCapture />
     </>
   );
 };

@@ -28,6 +28,22 @@ export const clipboardStore = proxy<ClipboardStore>({
     defaultFocus: false,
     position: "top",
   },
+
+  structuredCapture: {
+    ai: {
+      apiKey: "",
+      enabled: false,
+      endpoint: "",
+      model: "",
+      outputDir: "",
+      prompt: "",
+      timeoutMs: 20000,
+    },
+    rules: {
+      enabled: false,
+      outputDir: "",
+    },
+  },
   window: {
     backTop: false,
     position: "remember",
