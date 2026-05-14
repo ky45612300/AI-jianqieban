@@ -5,6 +5,7 @@ import {
 } from "@/plugins/structuredCapture";
 import { clipboardStore } from "@/stores/clipboard";
 import type { StructuredCaptureRecord } from "@/types/structured-capture";
+import { applyInternalRules, buildInternalRulePrompt } from "./internalRules";
 import {
   cleanupStructuredCaptureValue,
   sanitizeAddressValue,
@@ -93,6 +94,25 @@ const createChatCompletionMessages = (extraPrompt: string, text: string) => {
   ];
 };
 
+const createRuleGenerationMessages = (requirement: string) => {
+  return [
+    {
+      content: [
+        "\u4f60\u662f\u4e00\u4e2a\u91c7\u96c6\u89c4\u5219\u6574\u7406\u52a9\u624b\u3002",
+        "\u8bf7\u628a\u7528\u6237\u7684\u81ea\u7136\u8bed\u8a00\u8981\u6c42\u6574\u7406\u6210\u7b80\u6d01\u3001\u53ef\u6267\u884c\u7684\u91c7\u96c6\u89c4\u5219\u3002",
+        "\u53ea\u56f4\u7ed5\u4e94\u4e2a\u5b57\u6bb5\uff1a\u516c\u53f8\u540d\u79f0\u3001\u59d3\u540d/\u6cd5\u4eba\u3001\u7535\u8bdd\u53f7\u7801\u3001\u90ae\u7bb1\u3001\u5730\u5740\u3002",
+        "\u8bf7\u4f7f\u7528\u6761\u76ee\u5217\u8868\uff0c\u4e0d\u8981\u8f93\u51fa Markdown \u4ee3\u7801\u5757\uff0c\u4e0d\u8981\u8f93\u51fa\u89e3\u91ca\u3002",
+        "\u5982\u679c\u7528\u6237\u8981\u6c42\u53ea\u63d0\u53d6\u67d0\u4e9b\u5b57\u6bb5\uff0c\u8bf7\u660e\u786e\u5199\u51fa\u201c\u53ea\u63d0\u53d6...\u201d\u3002",
+      ].join("\n"),
+      role: "system",
+    },
+    {
+      content: requirement.slice(0, 3000),
+      role: "user",
+    },
+  ];
+};
+
 const parseEndpointUrl = (endpoint: string) => {
   let url: URL;
 
@@ -162,11 +182,24 @@ const createChatCompletionBody = (
   ai: typeof clipboardStore.structuredCapture.ai,
   text: string,
 ) => {
+  const internalRulePrompt = buildInternalRulePrompt(ai.prompt || "");
+
   return {
     messages: createChatCompletionMessages(
-      `${DEFAULT_AI_EXTRACTION_PROMPT}\n${ai.prompt || ""}`.trim(),
+      `${DEFAULT_AI_EXTRACTION_PROMPT}\n${internalRulePrompt}`.trim(),
       text,
     ),
+    model: ai.model,
+    temperature: 0,
+  };
+};
+
+const createRuleGenerationBody = (
+  ai: typeof clipboardStore.structuredCapture.ai,
+  requirement: string,
+) => {
+  return {
+    messages: createRuleGenerationMessages(requirement),
     model: ai.model,
     temperature: 0,
   };
@@ -217,6 +250,50 @@ const requestChatCompletion = async ({ ai, text }: AiRequestOptions) => {
 
   throw new Error(
     `AI \u63d0\u53d6\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${lastStatus}\u3002`,
+  );
+};
+
+const requestRuleGeneration = async (
+  ai: typeof clipboardStore.structuredCapture.ai,
+  requirement: string,
+) => {
+  const endpoints = getChatCompletionEndpoints(ai.endpoint);
+  let lastStatus = 0;
+
+  for (const endpoint of endpoints) {
+    const response = await requestStructuredCaptureAiChatCompletion({
+      apiKey: ai.apiKey,
+      body: createRuleGenerationBody(ai, requirement),
+      endpoint,
+      timeoutMs: ai.timeoutMs || 20000,
+    });
+
+    lastStatus = response.status;
+
+    if (response.status === 404 && endpoints.length > 1) {
+      continue;
+    }
+
+    if (response.status < 200 || response.status >= 300) {
+      if (response.status === 404) {
+        throw createEndpoint404Error(endpoints);
+      }
+
+      throw new Error(
+        `\u751f\u6210\u89c4\u5219\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${response.status}\u3002`,
+      );
+    }
+
+    const data = JSON.parse(response.body) as ChatCompletionResponse;
+    return readMessageContent(data);
+  }
+
+  if (lastStatus === 404) {
+    throw createEndpoint404Error(endpoints);
+  }
+
+  throw new Error(
+    `\u751f\u6210\u89c4\u5219\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${lastStatus}\u3002`,
   );
 };
 
@@ -325,7 +402,52 @@ export const extractByAi = async (
     return null;
   }
 
-  return record;
+  return applyInternalRules(record, ai.prompt || "");
+};
+
+export const generateStructuredCaptureInternalRules = async (): Promise<{
+  message: string;
+  ok: boolean;
+  rules: string;
+}> => {
+  const { ai } = clipboardStore.structuredCapture;
+  const requirement = cleanupStructuredCaptureValue(ai.prompt || "");
+
+  if (!ai.endpoint || !ai.model) {
+    return {
+      message:
+        "\u8bf7\u5148\u586b\u5199 AI \u63a5\u53e3\u5730\u5740\u548c\u6a21\u578b\u540d\u3002",
+      ok: false,
+      rules: "",
+    };
+  }
+
+  if (!requirement) {
+    return {
+      message:
+        "\u8bf7\u5148\u5199\u4e0b\u4f60\u7684\u91c7\u96c6\u8981\u6c42\u3002",
+      ok: false,
+      rules: "",
+    };
+  }
+
+  const generatedRules = cleanupStructuredCaptureValue(
+    await requestRuleGeneration(ai, requirement),
+  );
+
+  if (!generatedRules) {
+    return {
+      message: "\u672a\u751f\u6210\u6709\u6548\u89c4\u5219\u3002",
+      ok: false,
+      rules: "",
+    };
+  }
+
+  return {
+    message: "\u5df2\u751f\u6210\u91c7\u96c6\u89c4\u5219\u3002",
+    ok: true,
+    rules: generatedRules,
+  };
 };
 
 export const testStructuredCaptureAiEndpoint = async (): Promise<{

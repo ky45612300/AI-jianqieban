@@ -1,5 +1,7 @@
 export type StructuredCaptureChannel = "rules" | "ai";
 
+export type StructuredCaptureScriptSource = "builtin" | "external";
+
 export interface StructuredCaptureRecord {
   capturedAt: string;
   companyName: string;

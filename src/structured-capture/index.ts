@@ -6,6 +6,7 @@ import type {
 } from "@/types/structured-capture";
 import { formatDate } from "@/utils/dayjs";
 import { extractByAi } from "./ai";
+import { extractByExternalScript } from "./externalScript";
 import { extractByRules } from "./rules";
 import { isStructuredCaptureCandidate } from "./shared";
 import { persistStructuredCaptureRecord } from "./storage";
@@ -22,8 +23,11 @@ const normalizeInput = (text: string) => {
 const buildFingerprint = async (
   channel: StructuredCaptureChannel,
   text: string,
+  variant?: string,
 ) => {
-  const payload = new TextEncoder().encode(`${channel}:${text}`);
+  const payload = new TextEncoder().encode(
+    variant ? `${channel}:${variant}:${text}` : `${channel}:${text}`,
+  );
   const hashBuffer = await crypto.subtle.digest("SHA-256", payload);
   const bytes = Array.from(new Uint8Array(hashBuffer));
   return bytes.map((item) => item.toString(16).padStart(2, "0")).join("");
@@ -48,13 +52,14 @@ const processChannel = async (
     | Omit<StructuredCaptureRecord, "capturedAt">
     | null,
   outputDir?: string,
+  fingerprintVariant?: string,
 ) => {
   const result = await extractor(text);
   if (!result) {
     return;
   }
 
-  const fingerprint = await buildFingerprint(channel, text);
+  const fingerprint = await buildFingerprint(channel, text, fingerprintVariant);
   await persistStructuredCaptureRecord(
     channel,
     toRecord(result),
@@ -70,12 +75,14 @@ const runStructuredCapture = async (text: string) => {
   }
 
   const { rules, ai } = clipboardStore.structuredCapture;
+  const useExternalRules = rules.scriptSource === "external";
 
   if (!rules.enabled && !ai.enabled) {
     return;
   }
 
-  if (!isStructuredCaptureCandidate(normalizedText)) {
+  const isBuiltInCandidate = isStructuredCaptureCandidate(normalizedText);
+  if (!isBuiltInCandidate && !(rules.enabled && useExternalRules)) {
     return;
   }
 
@@ -96,20 +103,23 @@ const runStructuredCapture = async (text: string) => {
 
   const tasks: Promise<void>[] = [];
 
-  if (rules.enabled) {
+  if (rules.enabled && (isBuiltInCandidate || useExternalRules)) {
     tasks.push(
       enqueueChannel("rules", () =>
         processChannel(
           "rules",
           normalizedText,
-          extractByRules,
+          useExternalRules
+            ? extractByExternalScript
+            : (value) => extractByRules(value, ai.prompt || ""),
           rules.outputDir,
+          useExternalRules ? "external" : `builtin:${ai.prompt || ""}`,
         ),
       ),
     );
   }
 
-  if (ai.enabled) {
+  if (ai.enabled && isBuiltInCandidate) {
     tasks.push(
       enqueueChannel("ai", () =>
         processChannel("ai", normalizedText, extractByAi, ai.outputDir),

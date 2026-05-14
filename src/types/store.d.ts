@@ -1,4 +1,5 @@
 import type { Platform } from "@tauri-apps/plugin-os";
+import type { StructuredCaptureScriptSource } from "./structured-capture";
 
 export type Theme = "auto" | "light" | "dark";
 
@@ -103,6 +104,7 @@ export interface ClipboardStore {
     rules: {
       enabled: boolean;
       outputDir: string;
+      scriptSource: StructuredCaptureScriptSource;
     };
     ai: {
       enabled: boolean;

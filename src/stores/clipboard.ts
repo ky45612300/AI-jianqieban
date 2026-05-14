@@ -42,6 +42,7 @@ export const clipboardStore = proxy<ClipboardStore>({
     rules: {
       enabled: false,
       outputDir: "",
+      scriptSource: "builtin",
     },
   },
   window: {

@@ -76,7 +76,11 @@ pub fn run() {
         .plugin(tauri_plugin_eco_autostart::init())
         .invoke_handler(generate_handler![
             structured_capture::append_structured_capture_csv,
+            structured_capture::ensure_structured_capture_external_script,
             structured_capture::fetch_structured_capture_ai_models,
+            structured_capture::get_structured_capture_external_script_path,
+            structured_capture::open_structured_capture_external_script,
+            structured_capture::read_structured_capture_external_script,
             structured_capture::request_structured_capture_ai_chat_completion
         ])
         .on_window_event(|window, event| match event {
