@@ -1,4 +1,5 @@
 mod core;
+mod ocr;
 mod structured_capture;
 
 use core::{prevent_default, setup};
@@ -21,7 +22,7 @@ pub fn run() {
 
             Ok(())
         })
-        // 确保在 windows 和 linux 上只有一个 app 实例在运行：https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/single-instance
+        // 确保在 windows 和 linux 上只有一个 app 实例在���行：https://github.com/tauri-apps/plugins-workspace/tree/v2/plugins/single-instance
         .plugin(tauri_plugin_single_instance::init(
             |app_handle, _argv, _cwd| {
                 show_main_window(app_handle);
@@ -75,6 +76,8 @@ pub fn run() {
         // 自定义判断是否自动启动的插件
         .plugin(tauri_plugin_eco_autostart::init())
         .invoke_handler(generate_handler![
+            ocr::recognize_text_from_image,
+            ocr::batch_recognize_text,
             structured_capture::append_structured_capture_csv,
             structured_capture::ensure_structured_capture_external_script,
             structured_capture::fetch_structured_capture_ai_models,
