@@ -45,6 +45,11 @@ export const clipboardStore = proxy<ClipboardStore>({
       scriptSource: "builtin",
     },
   },
+  wechatOcr: {
+    enabled: true,
+    structuredCapture: true,
+    timeoutMs: 10000,
+  },
   window: {
     backTop: false,
     position: "remember",

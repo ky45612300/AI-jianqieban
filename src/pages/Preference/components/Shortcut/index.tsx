@@ -29,6 +29,17 @@ const Shortcut = () => {
           value={shortcut.preference}
         />
 
+        <ProShortcut
+          description={t(
+            "preference.shortcut.shortcut.hints.screen_capture_ocr",
+          )}
+          onChange={(value) => {
+            globalStore.shortcut.screenCapture = value;
+          }}
+          title={t("preference.shortcut.shortcut.label.screen_capture_ocr")}
+          value={shortcut.screenCapture}
+        />
+
         <QuickPaste />
 
         <ProShortcut

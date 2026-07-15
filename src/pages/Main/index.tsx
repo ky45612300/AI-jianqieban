@@ -18,6 +18,7 @@ import {
   showWindow,
   toggleWindowVisible,
 } from "@/plugins/window";
+import { startScreenCaptureOcr } from "@/screen-capture";
 import { clipboardStore } from "@/stores/clipboard";
 import { globalStore } from "@/stores/global";
 import type {
@@ -88,6 +89,11 @@ const Main = () => {
 
   // 窗口显示与隐藏
   useRegister(toggleWindowVisible, [shortcut.clipboard]);
+
+  // 截图并等待剪贴板图片进入 OCR
+  useRegister(() => {
+    void startScreenCaptureOcr();
+  }, [shortcut.screenCapture]);
 
   // 打开偏好设置窗口
   useKeyPress(PRESET_SHORTCUT.OPEN_PREFERENCES, () => {

@@ -40,6 +40,7 @@ export interface GlobalStore {
       value: string;
     };
     pastePlain: string;
+    screenCapture: string;
   };
 
   // 只在当前系统环境使用
@@ -115,5 +116,11 @@ export interface ClipboardStore {
       prompt: string;
       timeoutMs: number;
     };
+  };
+
+  wechatOcr: {
+    enabled: boolean;
+    structuredCapture: boolean;
+    timeoutMs: number;
   };
 }

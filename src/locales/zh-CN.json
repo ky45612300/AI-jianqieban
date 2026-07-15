@@ -326,13 +326,15 @@
       "shortcut": {
         "hints": {
           "paste_as_plain": "激活窗口时，将选中的内容粘贴为纯文本或路径",
-          "quick_paste": "隐藏窗口时，使用数字组合键快速粘贴前九项"
+          "quick_paste": "隐藏窗口时，使用数字组合键快速粘贴前九项",
+          "screen_capture_ocr": "唤起系统框选截图，截图复制到剪贴板后自动进行微信 OCR"
         },
         "label": {
           "open_clipboard": "打开剪贴板窗口",
           "open_settings": "打开偏好设置窗口",
           "paste_as_plain": "粘贴为纯文本",
-          "quick_paste": "快速粘贴"
+          "quick_paste": "快速粘贴",
+          "screen_capture_ocr": "截图 OCR"
         },
         "title": "快捷键"
       }

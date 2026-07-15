@@ -14,6 +14,17 @@ dist-ssr
 auto-imports.d.ts
 *.patch
 /target/
+src-tauri/target/
+
+# Release artifacts
+release/
+
+# Local debug symbols
+src-tauri/bin/*.pdb
+
+# .NET sidecar build outputs
+sidecars/**/bin/
+sidecars/**/obj/
 
 # Editor directories and files
 .idea

@@ -326,13 +326,15 @@
       "shortcut": {
         "hints": {
           "paste_as_plain": "啟動視窗時，將選中的內容粘貼為純文字或路徑",
-          "quick_paste": "隱藏視窗時，使用數字鍵快速貼上前九項"
+          "quick_paste": "隱藏視窗時，使用數字鍵快速貼上前九項",
+          "screen_capture_ocr": "叫出系統框選截圖，截圖複製到剪貼簿後自動進行微信 OCR"
         },
         "label": {
           "open_clipboard": "打開剪貼簿視窗",
           "open_settings": "打開偏好設定視窗",
           "paste_as_plain": "貼上為純文字",
-          "quick_paste": "快速貼上"
+          "quick_paste": "快速貼上",
+          "screen_capture_ocr": "截圖 OCR"
         },
         "title": "快捷鍵"
       }

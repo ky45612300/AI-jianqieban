@@ -326,13 +326,15 @@
       "shortcut": {
         "hints": {
           "paste_as_plain": "選択範囲をプレーンテキスト、パスとして貼り付けます。",
-          "quick_paste": "ウィンドウを隠す際、数字キーの組み合わせで最初の9項目を素早く貼り付ける"
+          "quick_paste": "ウィンドウを隠す際、数字キーの組み合わせで最初の9項目を素早く貼り付ける",
+          "screen_capture_ocr": "システムの範囲選択スクリーンショットを開き、クリップボードにコピーされた後に WeChat OCR を実行します"
         },
         "label": {
           "open_clipboard": "クリップボードを開く",
           "open_settings": "クリップボード設定を開く",
           "paste_as_plain": "プレーンテキストとして貼り付け",
-          "quick_paste": "クイックペースト"
+          "quick_paste": "クイックペースト",
+          "screen_capture_ocr": "スクリーンショット OCR"
         },
         "title": "ショートカットキー"
       }

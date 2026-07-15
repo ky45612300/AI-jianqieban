@@ -27,6 +27,7 @@ import {
   openStructuredCaptureExternalScript,
 } from "@/plugins/structuredCapture";
 import { clipboardStore } from "@/stores/clipboard";
+import { globalStore } from "@/stores/global";
 import {
   fetchStructuredCaptureAiModels,
   generateStructuredCaptureInternalRules,
@@ -80,6 +81,12 @@ const LABELS = {
   timeout: "\u8d85\u65f6\u65f6\u95f4(\u6beb\u79d2)",
   timeoutDesc:
     "\u8d85\u65f6\u540e\u81ea\u52a8\u653e\u5f03\u5e76\u7ee7\u7eed\u4e0b\u4e00\u6761",
+  wechatOcrDesc:
+    "\u542f\u7528\u540e\uff0c\u590d\u5236\u56fe\u7247\u65f6\u4f1a\u8c03\u7528\u672c\u5730 WeChat OCR \u8bc6\u522b\u6587\u5b57\u3002\u8be5\u529f\u80fd\u4ec5\u652f\u6301 Windows\u3002",
+  wechatOcrHeader: "\u5fae\u4fe1 OCR",
+  wechatOcrToStructured: "\u8fdb\u5165\u7ed3\u6784\u5316\u91c7\u96c6",
+  wechatOcrToStructuredDesc:
+    "\u5c06 OCR \u8bc6\u522b\u51fa\u7684\u6587\u5b57\u7ee7\u7eed\u4ea4\u7ed9\u89c4\u5219\u63d0\u53d6\u548c AI \u8bc6\u522b",
 };
 
 const SCRIPT_SOURCE_OPTIONS: Array<{
@@ -97,7 +104,9 @@ const SCRIPT_SOURCE_OPTIONS: Array<{
 ];
 
 const StructuredCapture = () => {
-  const { structuredCapture } = useSnapshot(clipboardStore);
+  const { structuredCapture, wechatOcr } = useSnapshot(clipboardStore);
+  const { env } = useSnapshot(globalStore);
+  const isWindows = env.platform === "windows";
   const [externalScriptPath, setExternalScriptPath] = useState("");
   const [fetchingModels, setFetchingModels] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
@@ -252,6 +261,42 @@ const StructuredCapture = () => {
 
   return (
     <>
+      <ProList header={LABELS.wechatOcrHeader}>
+        <ProSwitch
+          description={
+            isWindows
+              ? LABELS.wechatOcrDesc
+              : `${LABELS.wechatOcrDesc}\n\u5f53\u524d\u7cfb\u7edf\u4e0d\u652f\u6301\u3002`
+          }
+          disabled={!isWindows}
+          onChange={(value) => {
+            clipboardStore.wechatOcr.enabled = value;
+          }}
+          title={LABELS.wechatOcrHeader}
+          value={isWindows && wechatOcr.enabled}
+        />
+
+        <ProSwitch
+          description={LABELS.wechatOcrToStructuredDesc}
+          onChange={(value) => {
+            clipboardStore.wechatOcr.structuredCapture = value;
+          }}
+          title={LABELS.wechatOcrToStructured}
+          value={wechatOcr.structuredCapture}
+        />
+
+        <ProListItem description={LABELS.timeoutDesc} title={LABELS.timeout}>
+          <InputNumber
+            min={1000}
+            onChange={(value) => {
+              clipboardStore.wechatOcr.timeoutMs = Number(value) || 10000;
+            }}
+            style={{ width: "100%" }}
+            value={wechatOcr.timeoutMs}
+          />
+        </ProListItem>
+      </ProList>
+
       <ProList header={LABELS.structuredHeader}>
         <ProSwitch
           description={LABELS.rulesDesc}

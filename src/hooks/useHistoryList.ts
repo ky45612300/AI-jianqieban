@@ -1,9 +1,10 @@
-import { copyFile, exists, remove } from "@tauri-apps/plugin-fs";
+import { copyFile, exists, remove, stat } from "@tauri-apps/plugin-fs";
 import { useAsyncEffect, useReactive } from "ahooks";
 import { isString } from "es-toolkit";
 import { unionBy } from "es-toolkit/compat";
 import { useContext } from "react";
 import { getDefaultSaveImagePath } from "tauri-plugin-clipboard-x-api";
+import { shouldAcceptClipboardImage } from "@/clipboard-ocr/shared";
 import { LISTEN_KEY } from "@/constants";
 import { selectHistory } from "@/database/history";
 import { MainContext } from "@/pages/Main";
@@ -55,10 +56,15 @@ export const useHistoryList = (options: Options) => {
           .orderBy("createTime", "desc");
       });
 
+      const nextList: typeof list = [];
+
       for (const item of list) {
         const { type, value } = item;
 
-        if (!isString(value)) continue;
+        if (!isString(value)) {
+          nextList.push(item);
+          continue;
+        }
 
         if (type === "image") {
           const oldPath = join(getSaveImagePath(), value);
@@ -71,24 +77,39 @@ export const useHistoryList = (options: Options) => {
           }
 
           item.value = newPath;
+
+          const fileBytes = await stat(newPath)
+            .then((fileInfo) => (fileInfo.isFile ? fileInfo.size : 0))
+            .catch(() => 0);
+
+          if (
+            !shouldAcceptClipboardImage({
+              fileBytes,
+              reportedBytes: item.count,
+            })
+          ) {
+            continue;
+          }
         }
 
         if (type === "files") {
           item.value = JSON.parse(value);
         }
+
+        nextList.push(item);
       }
 
       state.noMore = list.length === 0;
 
       if (page === 1) {
-        rootState.list = list;
+        rootState.list = nextList;
 
         if (state.noMore) return;
 
         return scrollToTop();
       }
 
-      rootState.list = unionBy(rootState.list, list, "id");
+      rootState.list = unionBy(rootState.list, nextList, "id");
     } finally {
       state.loading = false;
     }

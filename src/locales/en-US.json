@@ -326,13 +326,15 @@
       "shortcut": {
         "hints": {
           "paste_as_plain": "Paste selections as plain text or paths when the window is activated",
-          "quick_paste": "Use number key combos to quickly paste top 9 items when window is hidden"
+          "quick_paste": "Use number key combos to quickly paste top 9 items when window is hidden",
+          "screen_capture_ocr": "Open the system screen snip tool, then run WeChat OCR after the snip is copied to the clipboard"
         },
         "label": {
           "open_clipboard": "Open Clipboard Window",
           "open_settings": "Open Preferences Window",
           "paste_as_plain": "Paste as Plain Text",
-          "quick_paste": "Quick Paste"
+          "quick_paste": "Quick Paste",
+          "screen_capture_ocr": "Screenshot OCR"
         },
         "title": "Shortcuts"
       }
