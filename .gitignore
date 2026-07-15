@@ -11,6 +11,21 @@ node_modules
 dist
 dist-ssr
 *.local
+target/
+src-tauri/target/
+
+# Release artifacts
+release/
+
+# .NET sidecar build outputs
+sidecars/**/bin/
+sidecars/**/obj/
+
+# Local debug symbols
+src-tauri/bin/*.pdb
+
+# Old generated plugin leftovers from the pre-1.0 tree
+src-tauri/src/plugins/
 
 # Editor directories and files
 .vscode/*

@@ -84,6 +84,7 @@ export interface Appearance {
 export interface Shortcuts {
   openClipboard: string;
   openPreference: string;
+  screenCaptureOcr: string;
   winV: boolean;
 }
 
@@ -123,6 +124,12 @@ export interface Capture {
   maxTextMb: number;
   maxImageMb: number;
   order: CaptureKind[];
+}
+
+export interface WechatOcr {
+  enabled: boolean;
+  writeToClipboard: boolean;
+  timeoutMs: number;
 }
 
 export interface Sensitive {
@@ -185,6 +192,7 @@ export interface Onboarding {
 
 export interface Clipboard {
   capture: Capture;
+  wechatOcr: WechatOcr;
   content: Content;
   display: Display;
   sensitive: Sensitive;

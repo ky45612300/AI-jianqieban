@@ -16,3 +16,4 @@
 *.png binary
 *.ico binary
 *.icns binary
+src-tauri/bin/** binary

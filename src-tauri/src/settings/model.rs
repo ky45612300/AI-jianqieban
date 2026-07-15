@@ -125,6 +125,8 @@ pub struct Shortcuts {
     pub open_clipboard: String,
     /// 全局：打开偏好设置窗口。
     pub open_preference: String,
+    /// 全局：启动 Windows 截图并在截图进入剪贴板后自动 OCR。
+    pub screen_capture_ocr: String,
     /// 仅 Windows：用 Win+V 唤起剪贴板窗口，替代系统剪贴板历史面板。默认关闭。
     pub win_v: bool,
 }
@@ -134,6 +136,7 @@ impl Default for Shortcuts {
         Self {
             open_clipboard: "Alt+C".into(),
             open_preference: "Alt+X".into(),
+            screen_capture_ocr: "Alt+Z".into(),
             win_v: false,
         }
     }
@@ -143,6 +146,7 @@ impl Default for Shortcuts {
 #[serde(default, rename_all = "camelCase")]
 pub struct Clipboard {
     pub capture: Capture,
+    pub wechat_ocr: WechatOcr,
     pub content: Content,
     pub display: Display,
     pub sensitive: Sensitive,
@@ -152,6 +156,24 @@ pub struct Clipboard {
     pub preview: Preview,
     pub feedback: Feedback,
     pub filters: Filters,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(default, rename_all = "camelCase")]
+pub struct WechatOcr {
+    pub enabled: bool,
+    pub write_to_clipboard: bool,
+    pub timeout_ms: u64,
+}
+
+impl Default for WechatOcr {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            write_to_clipboard: true,
+            timeout_ms: 10_000,
+        }
+    }
 }
 
 /// 剪贴板内容类型采集开关。关闭后监听与手动读取都不入库对应类型。

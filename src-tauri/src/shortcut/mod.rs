@@ -12,6 +12,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutEvent, S
 
 use crate::core::{AppError, Result};
 use crate::settings::{SettingsStore, Shortcuts};
+use crate::screen_capture;
 use crate::window::{self, CLIPBOARD_WINDOW_LABEL, PREFERENCE_WINDOW_LABEL};
 
 #[cfg(target_os = "windows")]
@@ -127,9 +128,10 @@ pub fn apply(app: &AppHandle, shortcuts: &Shortcuts) -> Result<()> {
         return Ok(());
     }
 
-    let desired: [(&'static str, &str); 2] = [
+    let desired: [(&'static str, &str); 3] = [
         ("open_clipboard", &shortcuts.open_clipboard),
         ("open_preference", &shortcuts.open_preference),
+        ("screen_capture_ocr", &shortcuts.screen_capture_ocr),
     ];
 
     #[cfg(target_os = "windows")]
@@ -249,6 +251,12 @@ fn handle_event(app: &AppHandle, action: &'static str, event: ShortcutEvent) {
     let label = match action {
         "open_clipboard" => CLIPBOARD_WINDOW_LABEL,
         "open_preference" => PREFERENCE_WINDOW_LABEL,
+        "screen_capture_ocr" => {
+            if let Err(err) = screen_capture::trigger_screen_capture(app) {
+                log::warn!("start screen capture via shortcut failed: {err}");
+            }
+            return;
+        }
         _ => return,
     };
     if let Err(err) = window::toggle_window(app, label) {

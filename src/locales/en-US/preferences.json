@@ -64,6 +64,7 @@
       "items": "items",
       "lines": "lines",
       "mb": "MB",
+      "milliseconds": "ms",
       "px": "px",
       "seconds": "seconds"
     },
@@ -110,6 +111,9 @@
       },
       "localData": {
         "title": "Storage Locations"
+      },
+      "ocr": {
+        "title": "OCR"
       },
       "organizing": {
         "title": "Favorites & Notes"
@@ -416,6 +420,20 @@
           "title": "Log Directory"
         }
       },
+      "ocr": {
+        "timeoutMs": {
+          "description": "Maximum time to wait for each WeChat OCR run before giving up.",
+          "title": "OCR Timeout"
+        },
+        "wechatEnabled": {
+          "description": "When an image is copied or captured, automatically extract text with WeChat OCR.",
+          "title": "Enable WeChat OCR"
+        },
+        "writeToClipboard": {
+          "description": "After OCR succeeds, copy the extracted text back to the system clipboard and save it as a text record.",
+          "title": "Copy Text After OCR"
+        }
+      },
       "organizing": {
         "autoFavorite": {
           "description": "When saving a non-empty note, automatically add that record to favorites.",
@@ -536,6 +554,11 @@
           "description": "Open or hide the preferences window.",
           "placeholder": "Alt+X",
           "title": "Open Preferences Window"
+        },
+        "screenCaptureOcr": {
+          "description": "Start Windows screen clipping; OCR runs automatically after the capture enters the clipboard.",
+          "placeholder": "Alt+Z",
+          "title": "Screen Capture OCR"
         },
         "winV": {
           "description": "Press Win+V to summon EcoPaste instead of the Windows clipboard history panel.",

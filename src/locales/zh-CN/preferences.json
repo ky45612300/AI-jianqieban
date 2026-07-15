@@ -64,6 +64,7 @@
       "items": "条",
       "lines": "行",
       "mb": "MB",
+      "milliseconds": "毫秒",
       "px": "px",
       "seconds": "秒"
     },
@@ -110,6 +111,9 @@
       },
       "localData": {
         "title": "存储位置"
+      },
+      "ocr": {
+        "title": "OCR 识别"
       },
       "organizing": {
         "title": "收藏与备注"
@@ -416,6 +420,20 @@
           "title": "日志目录"
         }
       },
+      "ocr": {
+        "timeoutMs": {
+          "description": "单次微信 OCR 最长等待时间，超过后放弃本次识别。",
+          "title": "识别超时时间"
+        },
+        "wechatEnabled": {
+          "description": "复制或截图得到图片后，自动调用微信 OCR 提取文字。",
+          "title": "启用微信 OCR"
+        },
+        "writeToClipboard": {
+          "description": "识别成功后，把提取到的文字写回系统剪贴板，并保存为文本记录。",
+          "title": "识别后复制文字"
+        }
+      },
       "organizing": {
         "autoFavorite": {
           "description": "保存非空备注时，自动把该记录加入收藏。",
@@ -536,6 +554,11 @@
           "description": "打开或隐藏偏好设置窗口。",
           "placeholder": "Alt+X",
           "title": "打开偏好设置窗口"
+        },
+        "screenCaptureOcr": {
+          "description": "启动 Windows 截图；截图进入剪贴板后自动 OCR。",
+          "placeholder": "Alt+Z",
+          "title": "截图 OCR"
         },
         "winV": {
           "description": "按 Win+V 唤起 EcoPaste，替代 Windows 系统剪贴板历史面板。",

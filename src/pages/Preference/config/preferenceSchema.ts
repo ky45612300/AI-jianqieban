@@ -128,6 +128,51 @@ export const preferenceTabs: PreferenceTab[] = [
         ],
       },
       {
+        id: "ocr",
+        settings: [
+          {
+            control: { type: "switch" },
+            id: "ocr.wechatEnabled",
+            keywords: ["ocr", "wechat", "image", "text"],
+            path: ["clipboard", "wechatOcr", "enabled"],
+            value: (settings) => {
+              return settings.clipboard.wechatOcr.enabled;
+            },
+          },
+          {
+            control: { type: "switch" },
+            disabledWhen: (settings) => {
+              return !settings.clipboard.wechatOcr.enabled;
+            },
+            id: "ocr.writeToClipboard",
+            keywords: ["ocr", "clipboard", "copy", "text"],
+            parentId: "ocr.wechatEnabled",
+            path: ["clipboard", "wechatOcr", "writeToClipboard"],
+            value: (settings) => {
+              return settings.clipboard.wechatOcr.writeToClipboard;
+            },
+          },
+          {
+            control: {
+              max: 120000,
+              min: 1000,
+              suffixKey: "milliseconds",
+              type: "number",
+            },
+            disabledWhen: (settings) => {
+              return !settings.clipboard.wechatOcr.enabled;
+            },
+            id: "ocr.timeoutMs",
+            keywords: ["ocr", "timeout", "wechat"],
+            parentId: "ocr.wechatEnabled",
+            path: ["clipboard", "wechatOcr", "timeoutMs"],
+            value: (settings) => {
+              return settings.clipboard.wechatOcr.timeoutMs;
+            },
+          },
+        ],
+      },
+      {
         id: "sensitive",
         settings: [
           {
@@ -739,6 +784,15 @@ export const preferenceTabs: PreferenceTab[] = [
             path: ["shortcuts", "openPreference"],
             value: (settings) => {
               return settings.shortcuts.openPreference;
+            },
+          },
+          {
+            control: { type: "shortcutRecorder" },
+            id: "shortcuts.screenCaptureOcr",
+            keywords: ["shortcut", "hotkey", "screen", "capture", "ocr"],
+            path: ["shortcuts", "screenCaptureOcr"],
+            value: (settings) => {
+              return settings.shortcuts.screenCaptureOcr;
             },
           },
           ...(isWin

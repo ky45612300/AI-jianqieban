@@ -13,10 +13,12 @@ mod keystroke;
 mod menu;
 #[cfg(target_os = "windows")]
 mod mouse;
+mod screen_capture;
 mod settings;
 mod shortcut;
 mod tray;
 mod update;
+mod wechat_ocr;
 mod window;
 
 use tauri::{Manager, WindowEvent};
@@ -90,6 +92,7 @@ pub fn run() {
             commands::get_run_as_admin_status,
             commands::set_run_as_admin,
             commands::restart_as_admin,
+            screen_capture::start_screen_capture,
             commands::read_clipboard,
             commands::list_clipboard_items,
             commands::open_external_url,
@@ -172,6 +175,7 @@ pub fn run() {
             commands::download_update,
             commands::install_update,
             commands::skip_update_version,
+            wechat_ocr::run_wechat_ocr,
             menu::clipboard_item::popup_clipboard_item_menu,
         ])
         .on_menu_event(|app, event| {

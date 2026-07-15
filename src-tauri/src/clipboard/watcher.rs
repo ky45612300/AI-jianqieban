@@ -128,6 +128,7 @@ pub async fn persist_and_notify(
     ) {
         log::warn!("emit {CLIPBOARD_UPDATED_EVENT} failed: {err}");
     }
+    crate::wechat_ocr::spawn_image_ocr(app, &item_to_write, result.deduplicated);
     Ok(result)
 }
 
