@@ -3,7 +3,7 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
     process::{Command, Stdio},
-    sync::Arc,
+    sync::{Arc, OnceLock},
     thread,
     time::{Duration, Instant},
 };
@@ -12,6 +12,7 @@ use chrono::Utc;
 use clipboard_rs::{Clipboard, ClipboardContext};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
+use tokio::sync::Semaphore;
 
 use crate::{
     clipboard::{ImageStore, WritebackGuard},
@@ -27,7 +28,9 @@ const SIDECAR_EXE_NAME: &str = "wechat-ocr-sidecar.exe";
 const CLIPBOARD_UPDATED_EVENT: &str = "clipboard://updated";
 const MAX_TIMEOUT_MS: u64 = 120_000;
 const MIN_TIMEOUT_MS: u64 = 1_000;
+const MIN_AUTO_TIMEOUT_MS: u64 = 30_000;
 const SUMMARY_MAX_CHARS: usize = 256;
+static OCR_SEMAPHORE: OnceLock<Arc<Semaphore>> = OnceLock::new();
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,6 +59,16 @@ fn normalize_timeout(timeout_ms: Option<u64>) -> Duration {
         .unwrap_or(10_000)
         .clamp(MIN_TIMEOUT_MS, MAX_TIMEOUT_MS);
     Duration::from_millis(timeout)
+}
+
+fn automatic_timeout(timeout_ms: u64) -> Duration {
+    normalize_timeout(Some(timeout_ms.max(MIN_AUTO_TIMEOUT_MS)))
+}
+
+fn ocr_semaphore() -> Arc<Semaphore> {
+    OCR_SEMAPHORE
+        .get_or_init(|| Arc::new(Semaphore::new(1)))
+        .clone()
 }
 
 fn executable_exists(path: &Path) -> bool {
@@ -325,11 +338,16 @@ pub fn spawn_image_ocr(app: &AppHandle, image_item: &ClipboardItem, deduplicated
         return;
     };
 
-    let timeout = normalize_timeout(Some(settings.clipboard.wechat_ocr.timeout_ms));
+    let timeout = automatic_timeout(settings.clipboard.wechat_ocr.timeout_ms);
     let write_to_clipboard = settings.clipboard.wechat_ocr.write_to_clipboard;
     let app = app.clone();
 
     tauri::async_runtime::spawn(async move {
+        let Ok(_permit) = ocr_semaphore().acquire_owned().await else {
+            log::warn!("WeChat OCR skipped because OCR queue was closed");
+            return;
+        };
+
         match run_ocr_text(app.clone(), image_path, timeout).await {
             Ok(text) => {
                 if let Err(err) = persist_ocr_text(app, text, write_to_clipboard).await {
@@ -384,6 +402,12 @@ mod tests {
         assert_eq!(normalize_timeout(Some(1)).as_millis(), 1_000);
         assert_eq!(normalize_timeout(Some(999_999)).as_millis(), 120_000);
         assert_eq!(normalize_timeout(None).as_millis(), 10_000);
+    }
+
+    #[test]
+    fn automatic_timeout_is_at_least_thirty_seconds() {
+        assert_eq!(automatic_timeout(1_000).as_millis(), 30_000);
+        assert_eq!(automatic_timeout(45_000).as_millis(), 45_000);
     }
 
     #[test]

@@ -155,7 +155,7 @@ export const preferenceTabs: PreferenceTab[] = [
           {
             control: {
               max: 120000,
-              min: 1000,
+              min: 30000,
               suffixKey: "milliseconds",
               type: "number",
             },

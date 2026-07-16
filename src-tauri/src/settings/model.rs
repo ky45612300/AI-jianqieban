@@ -171,7 +171,7 @@ impl Default for WechatOcr {
         Self {
             enabled: true,
             write_to_clipboard: true,
-            timeout_ms: 10_000,
+            timeout_ms: 30_000,
         }
     }
 }

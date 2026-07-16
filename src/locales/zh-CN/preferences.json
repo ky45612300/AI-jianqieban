@@ -422,7 +422,7 @@
       },
       "ocr": {
         "timeoutMs": {
-          "description": "单次微信 OCR 最长等待时间，超过后放弃本次识别。",
+          "description": "单次微信 OCR 最长等待时间，自动截图识别最低等待 30 秒。",
           "title": "识别超时时间"
         },
         "wechatEnabled": {

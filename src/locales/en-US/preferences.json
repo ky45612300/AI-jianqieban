@@ -422,7 +422,7 @@
       },
       "ocr": {
         "timeoutMs": {
-          "description": "Maximum time to wait for each WeChat OCR run before giving up.",
+          "description": "Maximum time to wait for each WeChat OCR run. Automatic screenshot OCR waits at least 30 seconds.",
           "title": "OCR Timeout"
         },
         "wechatEnabled": {
