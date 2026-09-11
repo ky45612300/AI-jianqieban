@@ -1,1 +1,4 @@
 src-tauri/bin/** binary
+
+# 源码统一 LF（避免 Windows autocrlf 与 biome 格式化冲突）
+* text=auto eol=lf
