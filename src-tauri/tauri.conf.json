@@ -69,11 +69,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "assets/tray.ico",
-      "resources/ocr/ocr-sidecar.exe",
-      "resources/ocr/wco_data/**/*"
-    ],
+    "resources": ["assets/tray.ico", "bin/**/*"],
     "shortDescription": "EcoPaste",
     "targets": ["nsis", "dmg", "app", "appimage", "deb", "rpm"]
   },
