@@ -48,6 +48,14 @@ export const getDatabase = async () => {
     .addColumn("subtype", "text")
     .execute();
 
+  // (type, value) 复合索引，加速剪贴板去重查询
+  await db.schema
+    .createIndex("idx_history_type_value")
+    .on("history")
+    .columns(["type", "value"])
+    .ifNotExists()
+    .execute();
+
   return db;
 };
 

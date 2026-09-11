@@ -34,10 +34,14 @@ export const clipboardStore = proxy<ClipboardStore>({
       apiKey: "",
       enabled: false,
       endpoint: "",
+      fallbackModels: [],
       model: "",
       outputDir: "",
       prompt: "",
       timeoutMs: 20000,
+    },
+    ocr: {
+      enabled: false,
     },
     rules: {
       enabled: false,

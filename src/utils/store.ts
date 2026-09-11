@@ -33,16 +33,22 @@ const initStore = async () => {
   await mkdir(globalStore.env.saveDataDir, { recursive: true });
 };
 
+let savePromise: Promise<void> | null = null;
+
 /**
  * 本地存储配置项
  * @param backup 是否为备份数据
  */
 export const saveStore = async (backup = false) => {
-  const store = { clipboardStore, globalStore };
-
-  const path = await getSaveStorePath(backup);
-
-  return writeTextFile(path, JSON.stringify(store, null, 2));
+  // 串行化写入，防止并发 save 相互覆盖
+  savePromise = savePromise?.catch(() => {}) ?? Promise.resolve();
+  const task = (async () => {
+    const store = { clipboardStore, globalStore };
+    const path = await getSaveStorePath(backup);
+    return writeTextFile(path, JSON.stringify(store, null, 2));
+  })();
+  savePromise = task;
+  return task;
 };
 
 /**

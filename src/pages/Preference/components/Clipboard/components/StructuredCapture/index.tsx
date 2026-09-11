@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from "antd";
 import { isEqual, isString } from "es-toolkit";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSnapshot } from "valtio";
 import ProList from "@/components/ProList";
 import ProListItem from "@/components/ProListItem";
@@ -37,6 +37,7 @@ import type { StructuredCaptureScriptSource } from "@/types/structured-capture";
 import { getStructuredCapturePath } from "@/utils/path";
 
 const LABELS = {
+  addFallback: "\u6dfb\u52a0\u5907\u7528\u6a21\u578b",
   aiDesc:
     "\u542f\u7528\u540e\u4f1a\u5148\u7528\u811a\u672c\u5224\u65ad\u662f\u5426\u50cf\u4f01\u4e1a\u4fe1\u606f\uff0c\u518d\u628a\u7591\u4f3c\u6587\u672c\u53d1\u7ed9\u4f60\u914d\u7f6e\u7684 OpenAI \u517c\u5bb9\u63a5\u53e3\uff0c\u7531 AI \u505a\u7ed3\u6784\u5316\u63d0\u53d6\u5e76\u5199\u5165\u72ec\u7acb\u76ee\u5f55\u3002",
   aiExtract: "AI \u63d0\u53d6",
@@ -51,19 +52,27 @@ const LABELS = {
   externalScriptFile: "\u5916\u7f6e\u811a\u672c\u6587\u4ef6",
   externalScriptFileDesc:
     "\u4f4d\u4e8e\u8f6f\u4ef6\u53ef\u6267\u884c\u6587\u4ef6\u540c\u7ea7\u76ee\u5f55\uff0c\u9996\u6b21\u6253\u5f00\u65f6\u4f1a\u81ea\u52a8\u751f\u6210\u53ef\u7f16\u8f91\u6a21\u677f",
+  fallbackModels: "\u5907\u7528\u6a21\u578b",
+  fallbackModelsDesc:
+    "\u4e3b\u6a21\u578b\u4e0d\u53ef\u7528\u65f6\u4f9d\u6b21\u5c1d\u8bd5\uff08\u6700\u591a3\u4e2a\uff09",
   fetchModels: "\u83b7\u53d6\u6a21\u578b",
   fetchModelsDesc:
     "\u4f1a\u6839\u636e\u4f60\u7684 AI \u63a5\u53e3\u5730\u5740\u81ea\u52a8\u53bb\u62c9\u53d6\u53ef\u7528\u6a21\u578b\u5217\u8868",
   modelName: "\u6a21\u578b\u540d",
   modelNameDesc:
     "\u8c03\u7528\u8be5\u63a5\u53e3\u65f6\u4f7f\u7528\u7684\u6a21\u578b\u540d",
+  ocrDesc:
+    "开启后，复制图片/截图会先用本地 OCR 识别成文字，再走规则/AI 结构化采集（仅 Windows）。",
+  ocrExtract: "截图 OCR",
   openScript: "\u6253\u5f00\u811a\u672c",
+
   prompt: "\u5185\u5728\u91c7\u96c6\u89c4\u5219",
   promptDesc:
     "\u5199\u4e0b\u91c7\u96c6\u8981\u6c42\uff0c\u53ef\u70b9\u51fb AI \u751f\u6210\u89c4\u5219\uff1b\u8be5\u89c4\u5219\u4f1a\u540c\u65f6\u5e94\u7528\u5230 AI \u63d0\u53d6\u548c\u5185\u7f6e\u89c4\u5219\u63d0\u53d6",
   promptGenerate: "AI \u751f\u6210\u89c4\u5219",
   promptPlaceholder:
     "\u4f8b\uff1a\u53ea\u63d0\u53d6\u516c\u53f8\u540d\u79f0\uff1b\u4e0d\u8981\u63d0\u53d6\u7535\u8bdd\u548c\u90ae\u7bb1\uff1b\u5730\u5740\u4e0d\u8981\u5305\u542b\u7ecf\u8425\u8303\u56f4",
+  removeFallback: "\u79fb\u9664",
   reset: "\u6062\u590d\u9ed8\u8ba4",
   rulesDesc:
     "\u542f\u7528\u540e\u53ef\u9009\u62e9\u8d70\u5185\u7f6e\u811a\u672c\u6216\u5b89\u88c5\u76ee\u5f55\u4e0b\u7684\u5916\u7f6e JS \u811a\u672c\uff0c\u8bc6\u522b \u516c\u53f8\u540d\u79f0 / \u59d3\u540d\u6cd5\u4eba / \u7535\u8bdd\u53f7\u7801 / \u90ae\u7bb1 / \u5730\u5740\uff0c\u5e76\u5199\u5165\u72ec\u7acb\u76ee\u5f55\u3002",
@@ -113,7 +122,11 @@ const StructuredCapture = () => {
   const [modelOptions, setModelOptions] = useState<Array<{ value: string }>>(
     [],
   );
+  const [fallbackModels, setFallbackModels] = useState<string[]>(
+    structuredCapture.ai?.fallbackModels || [],
+  );
   const [generatingRules, setGeneratingRules] = useState(false);
+  const generatingRequestIdRef = useRef(0);
   const [openingExternalScript, setOpeningExternalScript] = useState(false);
   const [testingAi, setTestingAi] = useState(false);
 
@@ -124,6 +137,33 @@ const StructuredCapture = () => {
         setExternalScriptPath("");
       });
   }, []);
+
+  // 同步备用模型列表
+  useEffect(() => {
+    setFallbackModels(structuredCapture.ai?.fallbackModels || []);
+  }, [structuredCapture.ai?.fallbackModels]);
+
+  const handleAddFallbackModel = () => {
+    if (fallbackModels.length >= 3) return;
+    clipboardStore.structuredCapture.ai.fallbackModels = [
+      ...fallbackModels,
+      "",
+    ];
+    setFallbackModels([...fallbackModels, ""]);
+  };
+
+  const handleRemoveFallbackModel = (index: number) => {
+    const next = fallbackModels.filter((_, i) => i !== index);
+    clipboardStore.structuredCapture.ai.fallbackModels = next;
+    setFallbackModels(next);
+  };
+
+  const handleFallbackModelChange = (index: number, value: string) => {
+    const next = [...fallbackModels];
+    next[index] = value;
+    clipboardStore.structuredCapture.ai.fallbackModels = next;
+    setFallbackModels(next);
+  };
 
   const handlePickPath = async (channel: "rules" | "ai") => {
     const dstDir = await open({ directory: true });
@@ -212,9 +252,12 @@ const StructuredCapture = () => {
   };
 
   const handleGenerateRules = async () => {
+    const requestId = ++generatingRequestIdRef.current;
     try {
       setGeneratingRules(true);
       const result = await generateStructuredCaptureInternalRules();
+
+      if (requestId !== generatingRequestIdRef.current) return; // 已被新请求覆盖
 
       if (!result.ok) {
         message.error(result.message);
@@ -224,9 +267,12 @@ const StructuredCapture = () => {
       clipboardStore.structuredCapture.ai.prompt = result.rules;
       message.success(result.message);
     } catch (error) {
+      if (requestId !== generatingRequestIdRef.current) return;
       message.error(String(error));
     } finally {
-      setGeneratingRules(false);
+      // 只在当前请求未被覆盖时复位，避免 return 吞掉 catch 的错误提示
+      if (requestId === generatingRequestIdRef.current)
+        setGeneratingRules(false);
     }
   };
 
@@ -298,6 +344,15 @@ const StructuredCapture = () => {
       </ProList>
 
       <ProList header={LABELS.structuredHeader}>
+        <ProSwitch
+          description={LABELS.ocrDesc}
+          onChange={(value) => {
+            clipboardStore.structuredCapture.ocr.enabled = value;
+          }}
+          title={LABELS.ocrExtract}
+          value={structuredCapture.ocr.enabled}
+        />
+
         <ProSwitch
           description={LABELS.rulesDesc}
           onChange={(value) => {
@@ -414,6 +469,39 @@ const StructuredCapture = () => {
               </Button>
             </Tooltip>
           </Space.Compact>
+        </ProListItem>
+
+        <ProListItem
+          description={LABELS.fallbackModelsDesc}
+          title={LABELS.fallbackModels}
+        >
+          <Space direction="vertical" style={{ width: "100%" }}>
+            {fallbackModels.map((model, index) => (
+              <Space.Compact
+                // 备用模型列表固定且无动画，无稳定 id 可用
+                // biome-ignore lint/suspicious/noArrayIndexKey: 列表短且无排序需求
+                key={index}
+                style={{ width: "100%" }}
+              >
+                <Input
+                  allowClear
+                  onChange={(e) =>
+                    handleFallbackModelChange(index, e.target.value)
+                  }
+                  placeholder={`备用模型 ${index + 1}`}
+                  value={model}
+                />
+                <Button onClick={() => handleRemoveFallbackModel(index)}>
+                  {LABELS.removeFallback}
+                </Button>
+              </Space.Compact>
+            ))}
+            {fallbackModels.length < 3 && (
+              <Button onClick={handleAddFallbackModel} type="dashed">
+                {LABELS.addFallback}
+              </Button>
+            )}
+          </Space>
         </ProListItem>
 
         <ProListItem description={LABELS.promptDesc} title={LABELS.prompt}>
