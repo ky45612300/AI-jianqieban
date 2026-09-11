@@ -95,11 +95,28 @@ const toStructuredRecord = (
   return record;
 };
 
+const EXECUTION_CACHE = new Map<
+  string,
+  (value: string, helpers: typeof externalScriptHelpers) => unknown
+>();
+
+const simpleHash = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return hash;
+};
+
 const runExternalScript = (source: string, text: string) => {
-  const runner = new Function(
-    "text",
-    "helpers",
-    `
+  const cacheKey = simpleHash(source).toString(16);
+  let runner = EXECUTION_CACHE.get(cacheKey);
+
+  if (!runner) {
+    runner = new Function(
+      "text",
+      "helpers",
+      `
 "use strict";
 const module = { exports: {} };
 const exports = module.exports;
@@ -119,7 +136,10 @@ if (typeof __structuredCaptureRunner !== "function") {
 
 return __structuredCaptureRunner(text, helpers);
 `,
-  ) as (value: string, helpers: typeof externalScriptHelpers) => unknown;
+    ) as (value: string, helpers: typeof externalScriptHelpers) => unknown;
+
+    EXECUTION_CACHE.set(cacheKey, runner);
+  }
 
   return runner(text, externalScriptHelpers);
 };

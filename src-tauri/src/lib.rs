@@ -1,7 +1,6 @@
 mod core;
-mod screen_capture;
+mod ocr;
 mod structured_capture;
-mod wechat_ocr;
 
 use core::{prevent_default, setup};
 use tauri::{generate_context, generate_handler, Builder, Manager, WindowEvent};
@@ -77,15 +76,14 @@ pub fn run() {
         // 自定义判断是否自动启动的插件
         .plugin(tauri_plugin_eco_autostart::init())
         .invoke_handler(generate_handler![
-            screen_capture::start_screen_capture,
+            ocr::ocr_image,
             structured_capture::append_structured_capture_csv,
             structured_capture::ensure_structured_capture_external_script,
             structured_capture::fetch_structured_capture_ai_models,
             structured_capture::get_structured_capture_external_script_path,
             structured_capture::open_structured_capture_external_script,
             structured_capture::read_structured_capture_external_script,
-            structured_capture::request_structured_capture_ai_chat_completion,
-            wechat_ocr::run_wechat_ocr
+            structured_capture::request_structured_capture_ai_chat_completion
         ])
         .on_window_event(|window, event| match event {
             // 让 app 保持在后台运行：https://tauri.app/v1/guides/features/system-tray/#preventing-the-app-from-closing

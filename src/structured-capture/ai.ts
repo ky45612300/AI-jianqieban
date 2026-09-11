@@ -178,9 +178,23 @@ const getChatCompletionEndpoints = (endpoint: string) => {
   );
 };
 
+const getModelList = (
+  ai: typeof clipboardStore.structuredCapture.ai,
+): string[] => {
+  if (!ai.model) return [];
+  const models = [ai.model];
+  for (const m of ai.fallbackModels) {
+    if (m && !models.includes(m) && models.length < 4) {
+      models.push(m);
+    }
+  }
+  return models;
+};
+
 const createChatCompletionBody = (
   ai: typeof clipboardStore.structuredCapture.ai,
   text: string,
+  model: string,
 ) => {
   const internalRulePrompt = buildInternalRulePrompt(ai.prompt || "");
 
@@ -189,18 +203,15 @@ const createChatCompletionBody = (
       `${DEFAULT_AI_EXTRACTION_PROMPT}\n${internalRulePrompt}`.trim(),
       text,
     ),
-    model: ai.model,
+    model,
     temperature: 0,
   };
 };
 
-const createRuleGenerationBody = (
-  ai: typeof clipboardStore.structuredCapture.ai,
-  requirement: string,
-) => {
+const createRuleGenerationBody = (requirement: string, model: string) => {
   return {
     messages: createRuleGenerationMessages(requirement),
-    model: ai.model,
+    model,
     temperature: 0,
   };
 };
@@ -214,34 +225,40 @@ const createEndpoint404Error = (endpoints: string[]) => {
 
 const requestChatCompletion = async ({ ai, text }: AiRequestOptions) => {
   const endpoints = getChatCompletionEndpoints(ai.endpoint);
+  const models = getModelList(ai);
   let lastStatus = 0;
 
-  for (const endpoint of endpoints) {
-    const response = await requestStructuredCaptureAiChatCompletion({
-      apiKey: ai.apiKey,
-      body: createChatCompletionBody(ai, text),
-      endpoint,
-      timeoutMs: ai.timeoutMs || 20000,
-    });
+  for (const model of models) {
+    for (const endpoint of endpoints) {
+      const response = await requestStructuredCaptureAiChatCompletion({
+        apiKey: ai.apiKey,
+        body: createChatCompletionBody(ai, text, model),
+        endpoint,
+        timeoutMs: ai.timeoutMs || 20000,
+      });
 
-    lastStatus = response.status;
+      lastStatus = response.status;
 
-    if (response.status === 404 && endpoints.length > 1) {
-      continue;
-    }
-
-    if (response.status < 200 || response.status >= 300) {
-      if (response.status === 404) {
-        throw createEndpoint404Error(endpoints);
+      if (response.status === 404 && endpoints.length > 1) {
+        continue;
       }
 
-      throw new Error(
-        `AI \u63d0\u53d6\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${response.status}\u3002`,
-      );
-    }
+      if (response.status < 200 || response.status >= 300) {
+        if (response.status === 404) {
+          continue;
+        }
+        // 429 表示模型不可用，尝试下一个模型
+        if (response.status === 429) {
+          continue;
+        }
+        throw new Error(
+          `AI \u63d0\u53d6\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${response.status}\u3002`,
+        );
+      }
 
-    const data = JSON.parse(response.body) as ChatCompletionResponse;
-    return readMessageContent(data);
+      const data = JSON.parse(response.body) as ChatCompletionResponse;
+      return readMessageContent(data);
+    }
   }
 
   if (lastStatus === 404) {
@@ -258,34 +275,40 @@ const requestRuleGeneration = async (
   requirement: string,
 ) => {
   const endpoints = getChatCompletionEndpoints(ai.endpoint);
+  const models = getModelList(ai);
   let lastStatus = 0;
 
-  for (const endpoint of endpoints) {
-    const response = await requestStructuredCaptureAiChatCompletion({
-      apiKey: ai.apiKey,
-      body: createRuleGenerationBody(ai, requirement),
-      endpoint,
-      timeoutMs: ai.timeoutMs || 20000,
-    });
+  for (const model of models) {
+    for (const endpoint of endpoints) {
+      const response = await requestStructuredCaptureAiChatCompletion({
+        apiKey: ai.apiKey,
+        body: createRuleGenerationBody(requirement, model),
+        endpoint,
+        timeoutMs: ai.timeoutMs || 20000,
+      });
 
-    lastStatus = response.status;
+      lastStatus = response.status;
 
-    if (response.status === 404 && endpoints.length > 1) {
-      continue;
-    }
-
-    if (response.status < 200 || response.status >= 300) {
-      if (response.status === 404) {
-        throw createEndpoint404Error(endpoints);
+      if (response.status === 404 && endpoints.length > 1) {
+        continue;
       }
 
-      throw new Error(
-        `\u751f\u6210\u89c4\u5219\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${response.status}\u3002`,
-      );
-    }
+      if (response.status < 200 || response.status >= 300) {
+        if (response.status === 404) {
+          continue;
+        }
+        // 429 表示模型不可用，尝试下一个模型
+        if (response.status === 429) {
+          continue;
+        }
+        throw new Error(
+          `\u751f\u6210\u89c4\u5219\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${response.status}\u3002`,
+        );
+      }
 
-    const data = JSON.parse(response.body) as ChatCompletionResponse;
-    return readMessageContent(data);
+      const data = JSON.parse(response.body) as ChatCompletionResponse;
+      return readMessageContent(data);
+    }
   }
 
   if (lastStatus === 404) {
@@ -387,8 +410,9 @@ export const extractByAi = async (
   text: string,
 ): Promise<Omit<StructuredCaptureRecord, "capturedAt"> | null> => {
   const { ai } = clipboardStore.structuredCapture;
+  const models = getModelList(ai);
 
-  if (!ai.enabled || !ai.endpoint || !ai.model) {
+  if (!ai.enabled || !ai.endpoint || models.length === 0) {
     return null;
   }
 
@@ -412,8 +436,9 @@ export const generateStructuredCaptureInternalRules = async (): Promise<{
 }> => {
   const { ai } = clipboardStore.structuredCapture;
   const requirement = cleanupStructuredCaptureValue(ai.prompt || "");
+  const models = getModelList(ai);
 
-  if (!ai.endpoint || !ai.model) {
+  if (!ai.endpoint || models.length === 0) {
     return {
       message:
         "\u8bf7\u5148\u586b\u5199 AI \u63a5\u53e3\u5730\u5740\u548c\u6a21\u578b\u540d\u3002",
@@ -463,7 +488,8 @@ export const testStructuredCaptureAiEndpoint = async (): Promise<{
     };
   }
 
-  if (!ai.endpoint || !ai.model) {
+  const models = getModelList(ai);
+  if (!ai.endpoint || models.length === 0) {
     return {
       message:
         "\u8bf7\u5148\u586b\u5199 AI \u63a5\u53e3\u5730\u5740\u548c\u6a21\u578b\u540d\u3002",

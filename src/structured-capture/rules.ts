@@ -36,7 +36,8 @@ const LABEL_ORDER: FieldKey[] = [
   "address",
 ];
 
-const BOUNDARY_LABELS = [
+// 标签列表（原始字面量），供 LABEL_PATTERN 构建时使用
+const BOUNDARY_LABELS_RAW = [
   "\u516c\u53f8\u540d\u79f0",
   "\u4f01\u4e1a\u540d\u79f0",
   "\u540d\u79f0",
@@ -83,10 +84,13 @@ const BOUNDARY_LABELS = [
   "\u66f4\u591a",
 ];
 
+// 预转义后拼接，避免每次模块加载重复执行 .map().join()
+const BOUNDARY_LABELS_ESCAPED = BOUNDARY_LABELS_RAW.map((label) =>
+  label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+).join("|");
+
 const LABEL_PATTERN = new RegExp(
-  `(${BOUNDARY_LABELS.map((label) =>
-    label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-  ).join("|")})\\s*(?:[:\uFF1A])`,
+  `(${BOUNDARY_LABELS_ESCAPED})\\s*(?:[:\uFF1A])`,
   "gi",
 );
 

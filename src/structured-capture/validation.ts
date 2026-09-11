@@ -83,7 +83,7 @@ export const isValidPhoneNumber = (phoneNumber: string): boolean => {
   // 处理国际格式 +8613800138000
   let toValidate = cleaned;
   if (toValidate.startsWith("+86")) {
-    toValidate = "1" + toValidate.substring(3);
+    toValidate = `1${toValidate.substring(3)}`;
   } else if (toValidate.startsWith("86")) {
     // 有时候会是 8613800138000 格式
     if (toValidate.length === 12 && toValidate[2] === "1") {
@@ -260,9 +260,13 @@ export const isValidStructuredRecord = (
   record: Omit<StructuredCaptureRecord, "capturedAt">,
 ): boolean => {
   // 所有字段都必须通过验证
-  const fields: Array<
-    keyof Omit<StructuredCaptureRecord, "capturedAt">
-  > = ["companyName", "contactName", "phoneNumber", "email", "address"];
+  const fields: Array<keyof Omit<StructuredCaptureRecord, "capturedAt">> = [
+    "companyName",
+    "contactName",
+    "phoneNumber",
+    "email",
+    "address",
+  ];
 
   for (const field of fields) {
     const value = record[field];
@@ -286,9 +290,13 @@ export const isValidStructuredRecord = (
 export const getValidFieldCount = (
   record: Omit<StructuredCaptureRecord, "capturedAt">,
 ): number => {
-  const fields: Array<
-    keyof Omit<StructuredCaptureRecord, "capturedAt">
-  > = ["companyName", "contactName", "phoneNumber", "email", "address"];
+  const fields: Array<keyof Omit<StructuredCaptureRecord, "capturedAt">> = [
+    "companyName",
+    "contactName",
+    "phoneNumber",
+    "email",
+    "address",
+  ];
 
   let count = 0;
   for (const field of fields) {
@@ -313,10 +321,7 @@ export const hasUsefulFieldsWithValidation = (
   record: Omit<StructuredCaptureRecord, "capturedAt">,
 ): boolean => {
   // 公司名称是必须的
-  if (
-    !record.companyName ||
-    !isValidCompanyName(record.companyName)
-  ) {
+  if (!record.companyName || !isValidCompanyName(record.companyName)) {
     return false;
   }
 

@@ -34,3 +34,7 @@ sidecars/**/obj/
 *.njsproj
 *.sln
 *.sw?
+
+# local OCR resources (do not commit)
+src-tauri/resources/
+ocr-sidecar/
