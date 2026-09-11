@@ -40,9 +40,6 @@ export const clipboardStore = proxy<ClipboardStore>({
       prompt: "",
       timeoutMs: 20000,
     },
-    ocr: {
-      enabled: false,
-    },
     rules: {
       enabled: false,
       outputDir: "",

@@ -61,9 +61,6 @@ const LABELS = {
   modelName: "\u6a21\u578b\u540d",
   modelNameDesc:
     "\u8c03\u7528\u8be5\u63a5\u53e3\u65f6\u4f7f\u7528\u7684\u6a21\u578b\u540d",
-  ocrDesc:
-    "开启后，复制图片/截图会先用本地 OCR 识别成文字，再走规则/AI 结构化采集（仅 Windows）。",
-  ocrExtract: "截图 OCR",
   openScript: "\u6253\u5f00\u811a\u672c",
 
   prompt: "\u5185\u5728\u91c7\u96c6\u89c4\u5219",
@@ -344,15 +341,6 @@ const StructuredCapture = () => {
       </ProList>
 
       <ProList header={LABELS.structuredHeader}>
-        <ProSwitch
-          description={LABELS.ocrDesc}
-          onChange={(value) => {
-            clipboardStore.structuredCapture.ocr.enabled = value;
-          }}
-          title={LABELS.ocrExtract}
-          value={structuredCapture.ocr.enabled}
-        />
-
         <ProSwitch
           description={LABELS.rulesDesc}
           onChange={(value) => {

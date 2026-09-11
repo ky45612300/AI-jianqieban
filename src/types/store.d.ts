@@ -102,9 +102,6 @@ export interface ClipboardStore {
   };
 
   structuredCapture: {
-    ocr: {
-      enabled: boolean;
-    };
     rules: {
       enabled: boolean;
       outputDir: string;
