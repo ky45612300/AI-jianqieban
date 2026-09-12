@@ -21,9 +21,12 @@ import {
   getStructuredCaptureStatePath,
 } from "@/utils/path";
 
+const MAX_FINGERPRINT_HISTORY = 200;
+
 const getState = async (statePath: string): Promise<StructuredCaptureState> => {
   if (!(await exists(statePath))) {
     return {
+      fingerprintHistory: [],
       lastFingerprint: "",
       updatedAt: "",
     };
@@ -33,6 +36,7 @@ const getState = async (statePath: string): Promise<StructuredCaptureState> => {
     const content = await readTextFile(statePath);
     if (!content.trim()) {
       return {
+        fingerprintHistory: [],
         lastFingerprint: "",
         updatedAt: "",
       };
@@ -41,6 +45,9 @@ const getState = async (statePath: string): Promise<StructuredCaptureState> => {
     const state = JSON.parse(content) as Partial<StructuredCaptureState>;
 
     return {
+      fingerprintHistory: Array.isArray(state.fingerprintHistory)
+        ? state.fingerprintHistory.filter((item) => typeof item === "string")
+        : [],
       lastFingerprint: state.lastFingerprint ?? "",
       updatedAt: state.updatedAt ?? "",
     };
@@ -50,15 +57,22 @@ const getState = async (statePath: string): Promise<StructuredCaptureState> => {
     );
 
     return {
+      fingerprintHistory: [],
       lastFingerprint: "",
       updatedAt: "",
     };
   }
 };
 
-const saveState = async (statePath: string, fingerprint: string) => {
+const saveState = async (statePath: string, state: StructuredCaptureState) => {
   const payload: StructuredCaptureState = {
-    lastFingerprint: fingerprint,
+    ...state,
+    fingerprintHistory: [
+      state.lastFingerprint,
+      ...(state.fingerprintHistory ?? []).filter(
+        (item) => item !== state.lastFingerprint,
+      ),
+    ].slice(0, MAX_FINGERPRINT_HISTORY),
     updatedAt: new Date().toISOString(),
   };
 
@@ -78,7 +92,10 @@ export const persistStructuredCaptureRecord = async (
   await mkdir(outputDir, { recursive: true });
 
   const state = await getState(statePath);
-  if (state.lastFingerprint === fingerprint) {
+  if (
+    state.lastFingerprint === fingerprint ||
+    (state.fingerprintHistory ?? []).includes(fingerprint)
+  ) {
     return false;
   }
 
@@ -90,6 +107,9 @@ export const persistStructuredCaptureRecord = async (
     values: STRUCTURED_CAPTURE_COLUMN_ORDER.map((key) => record[key]),
   });
 
-  await saveState(statePath, fingerprint);
+  await saveState(statePath, {
+    ...state,
+    lastFingerprint: fingerprint,
+  });
   return true;
 };

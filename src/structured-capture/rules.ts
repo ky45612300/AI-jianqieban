@@ -3,6 +3,7 @@ import { applyInternalRules } from "./internalRules";
 import {
   cleanupStructuredCaptureValue,
   hasCompanyHint,
+  hasUsefulFields,
   isLikelyAddressLine,
   isNoiseLine,
   normalizeStructuredCaptureText,
@@ -365,18 +366,6 @@ const fillFallbackFields = (
   if (!record.address) {
     record.address = extractAddress(lines);
   }
-};
-
-const hasUsefulFields = (record: StructuredCaptureDraft) => {
-  const meaningfulFields = [
-    record.companyName,
-    record.contactName,
-    record.phoneNumber,
-    record.email,
-    record.address,
-  ].filter(Boolean);
-
-  return Boolean(record.companyName) && meaningfulFields.length >= 2;
 };
 
 export const extractByRules = (

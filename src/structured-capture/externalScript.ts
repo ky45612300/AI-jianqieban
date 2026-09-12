@@ -3,6 +3,7 @@ import type { StructuredCaptureRecord } from "@/types/structured-capture";
 import {
   cleanupStructuredCaptureValue,
   hasCompanyHint,
+  hasUsefulFields,
   isLikelyAddressLine,
   isNoiseLine,
   normalizeStructuredCaptureText,
@@ -40,22 +41,24 @@ const cleanupValue = (value: unknown) => {
   return cleanupStructuredCaptureValue(String(value));
 };
 
-const isRecordPayload = (value: unknown): value is Record<string, unknown> => {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+// 外置脚本缓存：剪贴板变化频繁时避免每次都走 IPC 读文件 + new Function 重新编译。
+// 用户编辑脚本后最多延迟 5 秒生效。
+const SCRIPT_CACHE_TTL_MS = 5000;
+let scriptCache: { loadedAt: number; source: string } | null = null;
+
+const readExternalScript = async () => {
+  const now = Date.now();
+  if (scriptCache && now - scriptCache.loadedAt < SCRIPT_CACHE_TTL_MS) {
+    return scriptCache.source;
+  }
+
+  const source = await readStructuredCaptureExternalScript();
+  scriptCache = { loadedAt: now, source };
+  return source;
 };
 
-const hasUsefulFields = (
-  record: Omit<StructuredCaptureRecord, "capturedAt">,
-) => {
-  const meaningfulFields = [
-    record.companyName,
-    record.contactName,
-    record.phoneNumber,
-    record.email,
-    record.address,
-  ].filter(Boolean);
-
-  return Boolean(record.companyName) && meaningfulFields.length >= 2;
+const isRecordPayload = (value: unknown): value is Record<string, unknown> => {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 };
 
 const toStructuredRecord = (
@@ -147,7 +150,7 @@ return __structuredCaptureRunner(text, helpers);
 export const extractByExternalScript = async (
   text: string,
 ): Promise<Omit<StructuredCaptureRecord, "capturedAt"> | null> => {
-  const source = await readStructuredCaptureExternalScript();
+  const source = await readExternalScript();
   const payload = await Promise.resolve(runExternalScript(source, text));
 
   return toStructuredRecord(payload);

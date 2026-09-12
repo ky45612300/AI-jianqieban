@@ -1,3 +1,5 @@
+import type { StructuredCaptureRecord } from "@/types/structured-capture";
+
 const FIELD_LABEL_PATTERN =
   /(?:\u6cd5\u5b9a\u4ee3\u8868\u4eba|\u6cd5\u4eba|\u59d3\u540d\/\u6cd5\u4eba|\u59d3\u540d|\u8054\u7cfb\u4eba|\u7535\u8bdd\u53f7\u7801|\u7535\u8bdd|\u624b\u673a\u53f7|\u624b\u673a|\u8054\u7cfb\u7535\u8bdd|\u90ae\u7bb1|\u7535\u5b50\u90ae\u7bb1|Email|E-mail|\u5730\u5740|\u8054\u7cfb\u5730\u5740|\u516c\u53f8\u5730\u5740|\u7ecf\u8425\u5730\u5740|\u6ce8\u518c\u5730\u5740)/i;
 
@@ -153,4 +155,18 @@ export const isStructuredCaptureCandidate = (text: string) => {
     (hasCompany && lines.length >= 2) ||
     ((hasPhone || hasEmail) && hasAddress)
   );
+};
+
+export const hasUsefulFields = (
+  record: Omit<StructuredCaptureRecord, "capturedAt">,
+) => {
+  const meaningfulFields = [
+    record.companyName,
+    record.contactName,
+    record.phoneNumber,
+    record.email,
+    record.address,
+  ].filter(Boolean);
+
+  return Boolean(record.companyName) && meaningfulFields.length >= 2;
 };

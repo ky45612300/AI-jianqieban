@@ -8,10 +8,12 @@ import type { StructuredCaptureRecord } from "@/types/structured-capture";
 import { applyInternalRules, buildInternalRulePrompt } from "./internalRules";
 import {
   cleanupStructuredCaptureValue,
+  hasUsefulFields,
   sanitizeAddressValue,
   sanitizeEmail,
   sanitizePhoneNumber,
 } from "./shared";
+import { isValidStructuredRecord } from "./validation";
 
 interface ChatCompletionResponse {
   choices?: Array<{
@@ -223,56 +225,15 @@ const createEndpoint404Error = (endpoints: string[]) => {
   );
 };
 
-const requestChatCompletion = async ({ ai, text }: AiRequestOptions) => {
-  const endpoints = getChatCompletionEndpoints(ai.endpoint);
-  const models = getModelList(ai);
-  let lastStatus = 0;
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  for (const model of models) {
-    for (const endpoint of endpoints) {
-      const response = await requestStructuredCaptureAiChatCompletion({
-        apiKey: ai.apiKey,
-        body: createChatCompletionBody(ai, text, model),
-        endpoint,
-        timeoutMs: ai.timeoutMs || 20000,
-      });
+// 网络抖动/服务端临时错误（5xx、429）时做有限重试，避免偶发失败直接丢记录
+const MAX_REQUEST_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 1000;
 
-      lastStatus = response.status;
-
-      if (response.status === 404 && endpoints.length > 1) {
-        continue;
-      }
-
-      if (response.status < 200 || response.status >= 300) {
-        if (response.status === 404) {
-          continue;
-        }
-        // 429 表示模型不可用，尝试下一个模型
-        if (response.status === 429) {
-          continue;
-        }
-        throw new Error(
-          `AI \u63d0\u53d6\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${response.status}\u3002`,
-        );
-      }
-
-      const data = JSON.parse(response.body) as ChatCompletionResponse;
-      return readMessageContent(data);
-    }
-  }
-
-  if (lastStatus === 404) {
-    throw createEndpoint404Error(endpoints);
-  }
-
-  throw new Error(
-    `AI \u63d0\u53d6\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${lastStatus}\u3002`,
-  );
-};
-
-const requestRuleGeneration = async (
+const requestChatCompletionCore = async (
   ai: typeof clipboardStore.structuredCapture.ai,
-  requirement: string,
+  bodyFor: (model: string) => Record<string, unknown>,
 ) => {
   const endpoints = getChatCompletionEndpoints(ai.endpoint);
   const models = getModelList(ai);
@@ -282,7 +243,7 @@ const requestRuleGeneration = async (
     for (const endpoint of endpoints) {
       const response = await requestStructuredCaptureAiChatCompletion({
         apiKey: ai.apiKey,
-        body: createRuleGenerationBody(requirement, model),
+        body: bodyFor(model),
         endpoint,
         timeoutMs: ai.timeoutMs || 20000,
       });
@@ -297,12 +258,13 @@ const requestRuleGeneration = async (
         if (response.status === 404) {
           continue;
         }
-        // 429 表示模型不可用，尝试下一个模型
-        if (response.status === 429) {
+        // 429/5xx 等临时性错误交给外层 requestWithRetry 重试；
+        // 模型不可用（429）时会先切下一个模型，模型轮尽后仍失败才重试
+        if (response.status === 429 && models.length > 1) {
           continue;
         }
         throw new Error(
-          `\u751f\u6210\u89c4\u5219\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${response.status}\u3002`,
+          `AI \u8bf7\u6c42\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${response.status}\u3002`,
         );
       }
 
@@ -316,7 +278,52 @@ const requestRuleGeneration = async (
   }
 
   throw new Error(
-    `\u751f\u6210\u89c4\u5219\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${lastStatus}\u3002`,
+    `AI \u8bf7\u6c42\u5931\u8d25\uff0c\u63a5\u53e3\u8fd4\u56de ${lastStatus}\u3002`,
+  );
+};
+
+const requestWithRetry = async (
+  ai: typeof clipboardStore.structuredCapture.ai,
+  bodyFor: (model: string) => Record<string, unknown>,
+) => {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < MAX_REQUEST_ATTEMPTS; attempt += 1) {
+    try {
+      return await requestChatCompletionCore(ai, bodyFor);
+    } catch (requestError) {
+      lastError = requestError;
+
+      const isTransient =
+        requestError instanceof Error &&
+        /\u8fd4\u56de (429|5\d\d)|request failed|network|timeout/i.test(
+          requestError.message,
+        );
+
+      if (!isTransient || attempt === MAX_REQUEST_ATTEMPTS - 1) {
+        throw requestError;
+      }
+
+      await sleep(RETRY_BASE_DELAY_MS * (attempt + 1));
+    }
+  }
+
+  throw lastError;
+};
+
+const requestChatCompletion = async ({ ai, text }: AiRequestOptions) => {
+  // 主模型 429/不可用时 Core 内部轮询备用模型；临时错误由 requestWithRetry 重试
+  return requestWithRetry(ai, (model) =>
+    createChatCompletionBody(ai, text, model),
+  );
+};
+
+const requestRuleGeneration = async (
+  ai: typeof clipboardStore.structuredCapture.ai,
+  requirement: string,
+) => {
+  return requestWithRetry(ai, (model) =>
+    createRuleGenerationBody(requirement, model),
   );
 };
 
@@ -343,26 +350,6 @@ const requestAvailableModels = async (
       .filter((model, index, list) => list.indexOf(model) === index) ?? [];
 
   return models;
-};
-
-const parseStructuredRecord = (
-  messageContent: string,
-): Omit<StructuredCaptureRecord, "capturedAt"> | null => {
-  if (!messageContent) {
-    return null;
-  }
-
-  const parsed = JSON.parse(parseJsonBlock(messageContent)) as Record<
-    string,
-    unknown
-  >;
-  const record = toStructuredRecord(parsed);
-
-  if (!hasUsefulFields(record)) {
-    return null;
-  }
-
-  return record;
 };
 
 const toStructuredRecord = (
@@ -392,18 +379,25 @@ const toStructuredRecord = (
   };
 };
 
-const hasUsefulFields = (
-  record: Omit<StructuredCaptureRecord, "capturedAt">,
-) => {
-  const meaningfulFields = [
-    record.companyName,
-    record.contactName,
-    record.phoneNumber,
-    record.email,
-    record.address,
-  ].filter(Boolean);
+const parseStructuredRecord = (
+  messageContent: string,
+): Omit<StructuredCaptureRecord, "capturedAt"> | null => {
+  if (!messageContent) {
+    return null;
+  }
 
-  return Boolean(record.companyName) && meaningfulFields.length >= 2;
+  const parsed = JSON.parse(parseJsonBlock(messageContent)) as Record<
+    string,
+    unknown
+  >;
+  const record = toStructuredRecord(parsed);
+
+  // 必须同时满足：字段有用 + 各字段格式合法（邮箱/电话/地址等）
+  if (!hasUsefulFields(record) || !isValidStructuredRecord(record)) {
+    return null;
+  }
+
+  return record;
 };
 
 export const extractByAi = async (

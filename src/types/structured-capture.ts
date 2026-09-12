@@ -14,4 +14,5 @@ export interface StructuredCaptureRecord {
 export interface StructuredCaptureState {
   lastFingerprint: string;
   updatedAt: string;
+  fingerprintHistory?: string[];
 }

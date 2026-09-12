@@ -276,43 +276,38 @@ Tauri 桥接：
 2. 前端构建通过
 3. `dist/` 已生成
 
-外置脚本功能加入后，当前机器已完成：
+本轮优化改动后，本机已完成：
 
-1. `git diff --check`
+1. `pnpm install`
+2. `pnpm exec tsc --noEmit` 通过
+3. `pnpm exec biome lint src` 通过（纯 lint，无逻辑错误）
+4. `cargo check` 通过（需先 `pnpm exec tauri icon src-tauri/assets/logo.png` 生成 icons）
 
-当前机器暂未完成：
+注意：本机 git 配置 autocrlf 使工作区文件为 CRLF，`biome check`（含 format）会报换行符差异，属既有环境问题；提交时 `lint-staged` 的 `biome check --write` 会自动转 LF，不影响提交。校验逻辑用 `biome lint` 即可。
 
-1. `pnpm exec tsc --noEmit`
-2. `pnpm exec biome check ...`
-3. `cargo check`
+## 本轮优化改动（外置脚本之后）
 
-原因：
-
-1. 当前环境没有可直接调用的 `pnpm`
-2. 当前环境没有安装 Rust 工具链，`cargo` 不存在
+1. `validation.ts` 已接入 AI 通道：`ai.ts` 的 `parseStructuredRecord` 现在同时要求 `hasUsefulFields` + `isValidStructuredRecord`（邮箱/电话/地址格式校验）
+2. `hasUsefulFields` 抽到 `shared.ts`，`rules.ts`/`ai.ts`/`externalScript.ts` 统一引用，消除 3 处重复
+3. `release/` 两个安装包（16.8MB）已从 git 移除跟踪（本地文件保留），后续用 Release 页面或独立分支管理
+4. AI 请求增加有限重试：`requestWithRetry` 对 429/5xx/网络错误最多重试 3 次（指数退避），避免偶发抖动丢记录
+5. `.state.json` 去重升级：新增 `fingerprintHistory`（最近 200 个指纹），解决 A→B→A 重复采集问题
+6. 外置脚本增加 5 秒缓存：`externalScript.ts` 避免每次剪贴板变化都走 IPC 读文件 + `new Function` 重新编译
+7. 顺手修了 `validation.ts` 的 `useTemplate` lint 错误
 
 ## 当前缺口
 
 还没完成：
 
-1. 外置脚本新增代码的前端类型检查复跑
-2. 外置脚本新增代码的 Biome 检查复跑
-3. `cargo check`
-4. `pnpm tauri build`
-5. Windows 可安装成品包导出
+1. `pnpm tauri build`（Windows 可安装成品包导出）
+2. 四种模式实机验证（只开规则 / 外置脚本 / 只开 AI / 双开）
 
-原因：
-
-当前机器没有可直接调用的 `pnpm`，也没有安装 Rust 工具链。
+原因：尚未执行完整打包构建。
 
 ## 建议的下一步
 
-1. 准备可用的 `pnpm`
-2. 安装 Rust 工具链
-3. 复跑 `pnpm exec tsc --noEmit`
-4. 复跑目标文件 Biome 检查
-5. 在本仓库执行 `pnpm tauri build`
-6. 再验证四种模式：
+1. 在本仓库执行 `pnpm tauri build`（需先 `pnpm exec tauri icon src-tauri/assets/logo.png` 生成 icons）
+2. 再验证四种模式：
    - 只开规则
    - 规则通道选择外置脚本
    - 只开 AI
@@ -320,19 +315,11 @@ Tauri 桥接：
 
 ## Git 同步建议
 
-当前远程仍然是官方仓库：
+当前远程已指向自己的仓库：
 
-- `origin -> https://github.com/EcoPasteHub/EcoPaste.git`
+- `origin -> https://github.com/ky45612300/AI-jianqieban.git`
 
-如果要同步这份二开结果，建议：
+如果要保留官方上游以便合并更新，建议：
 
-1. 新建自己的私有仓库
-2. 执行：
-
-```powershell
-git remote rename origin upstream
-git remote add origin <你的私有仓库地址>
-git push -u origin HEAD
-```
-
-这样后续换电脑或换 AI 都更容易接手。
+1. 把官方仓库加为 `upstream`：`git remote add upstream https://github.com/EcoPasteHub/EcoPaste.git`
+2. 后续都推送到自己的 `origin`，需要合并官方更新时再从 `upstream` 拉取
