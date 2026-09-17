@@ -9,9 +9,7 @@ import { applyInternalRules, buildInternalRulePrompt } from "./internalRules";
 import {
   cleanupStructuredCaptureValue,
   hasUsefulFields,
-  sanitizeAddressValue,
-  sanitizeEmail,
-  sanitizePhoneNumber,
+  toStructuredRecordFromPayload,
 } from "./shared";
 import { isValidStructuredRecord } from "./validation";
 
@@ -33,22 +31,6 @@ interface AiRequestOptions {
   ai: typeof clipboardStore.structuredCapture.ai;
   text: string;
 }
-
-const CN_KEYS = {
-  address: "\u5730\u5740",
-  companyName: "\u516c\u53f8\u540d\u79f0",
-  contactName: "\u59d3\u540d/\u6cd5\u4eba",
-  email: "\u90ae\u7bb1",
-  phoneNumber: "\u7535\u8bdd\u53f7\u7801",
-} as const;
-
-const cleanupValue = (value: unknown) => {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  return cleanupStructuredCaptureValue(String(value));
-};
 
 const parseJsonBlock = (content: string) => {
   const trimmed = content.trim();
@@ -352,33 +334,6 @@ const requestAvailableModels = async (
   return models;
 };
 
-const toStructuredRecord = (
-  payload: Record<string, unknown>,
-): Omit<StructuredCaptureRecord, "capturedAt"> => {
-  return {
-    address: sanitizeAddressValue(
-      cleanupValue(
-        payload.address ?? payload.companyAddress ?? payload[CN_KEYS.address],
-      ),
-    ),
-    companyName: cleanupValue(
-      payload.companyName ?? payload.company ?? payload[CN_KEYS.companyName],
-    ),
-    contactName: cleanupValue(
-      payload.contactName ??
-        payload.legalPerson ??
-        payload.name ??
-        payload[CN_KEYS.contactName],
-    ),
-    email: sanitizeEmail(cleanupValue(payload.email ?? payload[CN_KEYS.email])),
-    phoneNumber: sanitizePhoneNumber(
-      cleanupValue(
-        payload.phoneNumber ?? payload.phone ?? payload[CN_KEYS.phoneNumber],
-      ),
-    ),
-  };
-};
-
 const parseStructuredRecord = (
   messageContent: string,
 ): Omit<StructuredCaptureRecord, "capturedAt"> | null => {
@@ -390,7 +345,10 @@ const parseStructuredRecord = (
     string,
     unknown
   >;
-  const record = toStructuredRecord(parsed);
+  const record = toStructuredRecordFromPayload(parsed);
+  if (!record) {
+    return null;
+  }
 
   // 必须同时满足：字段有用 + 各字段格式合法（邮箱/电话/地址等）
   if (!hasUsefulFields(record) || !isValidStructuredRecord(record)) {

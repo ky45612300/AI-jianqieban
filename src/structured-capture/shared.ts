@@ -170,3 +170,61 @@ export const hasUsefulFields = (
 
   return Boolean(record.companyName) && meaningfulFields.length >= 2;
 };
+
+// AI 与外置脚本返回的中文键兜底映射（统一维护，避免多处重复）
+const PAYLOAD_CN_KEYS = {
+  address: "地址",
+  companyName: "公司名称",
+  contactName: "姓名/法人",
+  email: "邮箱",
+  phoneNumber: "电话号码",
+} as const;
+
+const cleanupPayloadValue = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return cleanupStructuredCaptureValue(String(value));
+};
+
+/**
+ * 将 AI / 外置脚本返回的 payload 统一转换为结构化记录。
+ * 负责英文键 + 中文键映射与字段清洗；
+ * 不做有效性判断，由调用方自行决定保留条件（如 hasUsefulFields / 格式校验）。
+ */
+export const toStructuredRecordFromPayload = (
+  payload: unknown,
+): Omit<StructuredCaptureRecord, "capturedAt"> | null => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return null;
+  }
+
+  const record = payload as Record<string, unknown>;
+  const cnKeys = PAYLOAD_CN_KEYS;
+
+  return {
+    address: sanitizeAddressValue(
+      cleanupPayloadValue(
+        record.address ?? record.companyAddress ?? record[cnKeys.address],
+      ),
+    ),
+    companyName: cleanupPayloadValue(
+      record.companyName ?? record.company ?? record[cnKeys.companyName],
+    ),
+    contactName: cleanupPayloadValue(
+      record.contactName ??
+        record.legalPerson ??
+        record.name ??
+        record[cnKeys.contactName],
+    ),
+    email: sanitizeEmail(
+      cleanupPayloadValue(record.email ?? record[cnKeys.email]),
+    ),
+    phoneNumber: sanitizePhoneNumber(
+      cleanupPayloadValue(
+        record.phoneNumber ?? record.phone ?? record[cnKeys.phoneNumber],
+      ),
+    ),
+  };
+};

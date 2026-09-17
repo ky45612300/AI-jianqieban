@@ -11,15 +11,8 @@ import {
   sanitizeEmail,
   sanitizePhoneNumber,
   splitStructuredCaptureLines,
+  toStructuredRecordFromPayload,
 } from "./shared";
-
-const CN_KEYS = {
-  address: "地址",
-  companyName: "公司名称",
-  contactName: "姓名/法人",
-  email: "邮箱",
-  phoneNumber: "电话号码",
-} as const;
 
 const externalScriptHelpers = {
   cleanup: cleanupStructuredCaptureValue,
@@ -31,14 +24,6 @@ const externalScriptHelpers = {
   sanitizeEmail,
   sanitizePhoneNumber,
   splitLines: splitStructuredCaptureLines,
-};
-
-const cleanupValue = (value: unknown) => {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  return cleanupStructuredCaptureValue(String(value));
 };
 
 // 外置脚本缓存：剪贴板变化频繁时避免每次都走 IPC 读文件 + new Function 重新编译。
@@ -55,47 +40,6 @@ const readExternalScript = async () => {
   const source = await readStructuredCaptureExternalScript();
   scriptCache = { loadedAt: now, source };
   return source;
-};
-
-const isRecordPayload = (value: unknown): value is Record<string, unknown> => {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-};
-
-const toStructuredRecord = (
-  payload: unknown,
-): Omit<StructuredCaptureRecord, "capturedAt"> | null => {
-  if (!isRecordPayload(payload)) {
-    return null;
-  }
-
-  const record = {
-    address: sanitizeAddressValue(
-      cleanupValue(
-        payload.address ?? payload.companyAddress ?? payload[CN_KEYS.address],
-      ),
-    ),
-    companyName: cleanupValue(
-      payload.companyName ?? payload.company ?? payload[CN_KEYS.companyName],
-    ),
-    contactName: cleanupValue(
-      payload.contactName ??
-        payload.legalPerson ??
-        payload.name ??
-        payload[CN_KEYS.contactName],
-    ),
-    email: sanitizeEmail(cleanupValue(payload.email ?? payload[CN_KEYS.email])),
-    phoneNumber: sanitizePhoneNumber(
-      cleanupValue(
-        payload.phoneNumber ?? payload.phone ?? payload[CN_KEYS.phoneNumber],
-      ),
-    ),
-  };
-
-  if (!hasUsefulFields(record)) {
-    return null;
-  }
-
-  return record;
 };
 
 const EXECUTION_CACHE = new Map<
@@ -147,11 +91,26 @@ return __structuredCaptureRunner(text, helpers);
   return runner(text, externalScriptHelpers);
 };
 
+/**
+ * 纯函数：给定外置脚本文本源与输入文本，执行脚本并转换为结构化记录。
+ * 不依赖 Tauri IPC，便于单元测试；生产路径由 extractByExternalScript 读脚本后调用。
+ */
+export const recordFromScriptSource = (
+  source: string,
+  text: string,
+): Omit<StructuredCaptureRecord, "capturedAt"> | null => {
+  const payload = runExternalScript(source, text);
+  const record = toStructuredRecordFromPayload(payload);
+  if (!record || !hasUsefulFields(record)) {
+    return null;
+  }
+
+  return record;
+};
+
 export const extractByExternalScript = async (
   text: string,
 ): Promise<Omit<StructuredCaptureRecord, "capturedAt"> | null> => {
   const source = await readExternalScript();
-  const payload = await Promise.resolve(runExternalScript(source, text));
-
-  return toStructuredRecord(payload);
+  return recordFromScriptSource(source, text);
 };

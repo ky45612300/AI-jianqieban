@@ -70,21 +70,18 @@
 3. 目标文件 Biome 检查通过
 4. Vite 前端构建通过
 
-本次新增外置脚本后已经完成：
+外置脚本 + 本轮优化改动后已经完成：
 
-1. `git diff --check` 通过
+1. `pnpm exec tsc --noEmit` 通过
+2. Biome 检查通过
+3. `cargo test -p EcoPaste --lib structured_capture` 3 个 Rust 单元测试通过
+4. `pnpm exec tsx scripts/structured-capture.test.mjs` 12 个前端用例通过
+5. `pnpm run build:vite` 通过
 
 还没完成：
 
-1. 前端类型检查复跑
-2. 目标文件 Biome 检查复跑
-3. Tauri 桌面安装包构建
-4. Rust 编译验证
-
-原因：
-
-- 当前机器没有可直接调用的 `pnpm`
-- 当前机器没有安装 `cargo`
+1. `pnpm tauri build` 出 Windows 可安装成品包
+2. 四种模式实机验证
 
 ## Git 说明
 

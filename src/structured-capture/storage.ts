@@ -21,7 +21,7 @@ import {
   getStructuredCaptureStatePath,
 } from "@/utils/path";
 
-const MAX_FINGERPRINT_HISTORY = 200;
+const MAX_FINGERPRINT_HISTORY = 2000;
 
 const getState = async (statePath: string): Promise<StructuredCaptureState> => {
   if (!(await exists(statePath))) {
@@ -77,6 +77,19 @@ const saveState = async (statePath: string, state: StructuredCaptureState) => {
   };
 
   await writeTextFile(statePath, JSON.stringify(payload, null, 2));
+};
+
+export const isKnownStructuredCaptureFingerprint = async (
+  channel: StructuredCaptureChannel,
+  fingerprint: string,
+  customOutputDir?: string,
+): Promise<boolean> => {
+  const statePath = getStructuredCaptureStatePath(channel, customOutputDir);
+  const state = await getState(statePath);
+  return (
+    state.lastFingerprint === fingerprint ||
+    (state.fingerprintHistory ?? []).includes(fingerprint)
+  );
 };
 
 export const persistStructuredCaptureRecord = async (

@@ -9,7 +9,10 @@ import { extractByAi } from "./ai";
 import { extractByExternalScript } from "./externalScript";
 import { extractByRules } from "./rules";
 import { isStructuredCaptureCandidate } from "./shared";
-import { persistStructuredCaptureRecord } from "./storage";
+import {
+  isKnownStructuredCaptureFingerprint,
+  persistStructuredCaptureRecord,
+} from "./storage";
 
 const channelQueues: Record<StructuredCaptureChannel, Promise<void>> = {
   ai: Promise.resolve(),
@@ -54,12 +57,20 @@ const processChannel = async (
   outputDir?: string,
   fingerprintVariant?: string,
 ) => {
+  // 去重前置：命中指纹直接跳过提取，避免重复文本反复消耗 AI 请求。
+  // 注意：提取结果为 null 时不会写入指纹（见 storage），下次仍会重试提取。
+  const fingerprint = await buildFingerprint(channel, text, fingerprintVariant);
+  if (
+    await isKnownStructuredCaptureFingerprint(channel, fingerprint, outputDir)
+  ) {
+    return;
+  }
+
   const result = await extractor(text);
   if (!result) {
     return;
   }
 
-  const fingerprint = await buildFingerprint(channel, text, fingerprintVariant);
   await persistStructuredCaptureRecord(
     channel,
     toRecord(result),

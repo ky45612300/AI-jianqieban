@@ -295,12 +295,32 @@ Tauri 桥接：
 6. 外置脚本增加 5 秒缓存：`externalScript.ts` 避免每次剪贴板变化都走 IPC 读文件 + `new Function` 重新编译
 7. 顺手修了 `validation.ts` 的 `useTemplate` lint 错误
 
+## 本轮优化改动（测试补齐）
+
+1. 去重前置：`index.ts` 的 `processChannel` 现在先算指纹 + 查 `state.json`，命中直接跳过提取，避免重复文本白烧 AI 请求（提取结果为 null 不写指纹，下次仍会重试）
+2. 指纹历史上限从 200 提升到 2000（`storage.ts` 的 `MAX_FINGERPRINT_HISTORY`），减少长期运行后旧文本重复写入
+3. DRY 重构：`ai.ts` 与 `externalScript.ts` 重复的 `CN_KEYS`/`toStructuredRecord` 抽到 `shared.ts` 的 `toStructuredRecordFromPayload`
+4. `externalScript.ts` 新增纯函数 `recordFromScriptSource(source, text)`（不依赖 IPC），生产路径 `extractByExternalScript` 读脚本后调用它
+5. Rust 侧新增 `ensure_script_file_at(path)` 内部函数，`#[cfg(test)]` 单元测试 3 个（CSV 转义 / 表头只写一次 / 外置脚本模板不覆盖用户编辑）
+6. 新增 `scripts/structured-capture.test.mjs`（12 个用例：候选判断 / 内置规则 / 外置脚本三场景 / 内部规则 / 字段校验）
+
+## 测试运行方式
+
+```powershell
+# 前端结构化采集链路测试（tsx 直接跑 TS）
+pnpm exec tsx scripts/structured-capture.test.mjs
+
+# Rust 侧单元测试
+cargo test -p EcoPaste --lib structured_capture
+```
+
 ## 当前缺口
 
 还没完成：
 
 1. `pnpm tauri build`（Windows 可安装成品包导出）
 2. 四种模式实机验证（只开规则 / 外置脚本 / 只开 AI / 双开）
+3. 提交本轮优化改动与新增测试文件
 
 原因：尚未执行完整打包构建。
 

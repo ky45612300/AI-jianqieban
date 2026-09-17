@@ -17,7 +17,7 @@ use tauri::command;
 const EXTERNAL_SCRIPT_FILE_NAME: &str = "structured-capture-script.js";
 
 const DEFAULT_EXTERNAL_SCRIPT: &str = r#"// EcoPaste external structured capture script.
-// Edit and save this file. EcoPaste reloads it before each external capture.
+// Edit and save this file. EcoPaste reloads it with a short cache window, so changes apply within 5 seconds.
 // Return null to skip. Return an object to append a row to records.csv.
 // Fields: companyName, contactName, phoneNumber, email, address.
 // This template is ES5-compatible, so double-clicking it will not trigger Windows Script Host syntax errors.
@@ -209,22 +209,30 @@ fn path_to_string(path: PathBuf) -> String {
     path.to_string_lossy().into_owned()
 }
 
-fn ensure_external_script_file() -> Result<PathBuf, String> {
-    let path = get_external_script_path()?;
+fn ensure_script_file_at(path: &Path) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    }
 
     if !path.exists() {
-        fs::write(&path, DEFAULT_EXTERNAL_SCRIPT).map_err(|error| error.to_string())?;
+        fs::write(path, DEFAULT_EXTERNAL_SCRIPT).map_err(|error| error.to_string())?;
     } else {
-        let source = fs::read_to_string(&path).unwrap_or_default();
+        let source = fs::read_to_string(path).unwrap_or_default();
         let is_legacy_default = source.contains("EcoPaste 缁撴瀯")
             || source.contains("matched.groups?.value")
             || source.contains("function pickCompanyName(lines, helpers)");
 
         if is_legacy_default {
-            fs::write(&path, DEFAULT_EXTERNAL_SCRIPT).map_err(|error| error.to_string())?;
+            fs::write(path, DEFAULT_EXTERNAL_SCRIPT).map_err(|error| error.to_string())?;
         }
     }
 
+    Ok(())
+}
+
+fn ensure_external_script_file() -> Result<PathBuf, String> {
+    let path = get_external_script_path()?;
+    ensure_script_file_at(&path)?;
     Ok(path)
 }
 
@@ -388,4 +396,75 @@ pub async fn fetch_structured_capture_ai_models(
         None,
     )
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_payload(output_path: &Path, values: &[&str]) -> AppendStructuredCaptureCsvPayload {
+        AppendStructuredCaptureCsvPayload {
+            headers: vec![
+                "采集时间".into(),
+                "公司名称".into(),
+                "电话号码".into(),
+            ],
+            output_path: output_path.to_string_lossy().into_owned(),
+            values: values.iter().map(|value| value.to_string()).collect(),
+        }
+    }
+
+    #[test]
+    fn csv_escapes_special_characters() {
+        assert_eq!(escape_csv_value("北京"), "北京");
+        assert_eq!(escape_csv_value("北京,朝阳"), "\"北京,朝阳\"");
+        assert_eq!(escape_csv_value("\"test\""), "\"\"\"test\"\"\"");
+        assert_eq!(escape_csv_value("a\nb"), "\"a\nb\"");
+    }
+
+    #[test]
+    fn csv_append_writes_header_once_then_appends_rows() {
+        let dir = std::env::temp_dir()
+            .join(format!("eco_csv_test_{}_{}", std::process::id(), 1));
+        let file = dir.join("records.csv");
+
+        append_structured_capture_csv(
+            make_payload(&file, &["2026-01-01", "测试有限公司", "13800138000"]),
+        )
+        .unwrap();
+
+        append_structured_capture_csv(
+            make_payload(&file, &["2026-01-02", "第二,家\"公司\"", "13900001111"]),
+        )
+        .unwrap();
+
+        let content = fs::read_to_string(&file).unwrap();
+        let lines: Vec<&str> = content.lines().collect();
+        assert_eq!(lines.len(), 3, "应只有 1 行表头 + 2 行数据");
+        assert_eq!(lines[0], "采集时间,公司名称,电话号码");
+        assert_eq!(lines[1], "2026-01-01,测试有限公司,13800138000");
+        assert_eq!(lines[2], "2026-01-02,\"第二,家\"\"公司\"\"\",13900001111");
+
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn ensure_script_file_creates_template_but_never_overwrites_user_edits() {
+        let dir = std::env::temp_dir().join(format!("eco_script_test_{}", std::process::id()));
+        let path = dir.join("structured-capture-script.js");
+        let _ = fs::remove_dir_all(&dir);
+
+        // 模板不存在时生成默认脚本
+        ensure_script_file_at(&path).unwrap();
+        let original = fs::read_to_string(&path).unwrap();
+        assert!(original.contains("capture(text, helpers)"));
+
+        // 用户编辑后不应被覆盖
+        let user_edit = "// user edited\nmodule.exports.capture = function() { return null; };";
+        fs::write(&path, user_edit).unwrap();
+        ensure_script_file_at(&path).unwrap();
+        assert_eq!(fs::read_to_string(&path).unwrap(), user_edit);
+
+        fs::remove_dir_all(&dir).ok();
+    }
 }
