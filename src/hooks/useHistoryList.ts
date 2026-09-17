@@ -4,7 +4,10 @@ import { isString } from "es-toolkit";
 import { unionBy } from "es-toolkit/compat";
 import { useContext } from "react";
 import { getDefaultSaveImagePath } from "tauri-plugin-clipboard-x-api";
-import { shouldAcceptClipboardImage } from "@/clipboard-ocr/shared";
+import {
+  isAbsolutePath,
+  shouldAcceptClipboardImage,
+} from "@/clipboard-ocr/shared";
 import { LISTEN_KEY } from "@/constants";
 import { selectHistory } from "@/database/history";
 import { MainContext } from "@/pages/Main";
@@ -67,8 +70,15 @@ export const useHistoryList = (options: Options) => {
         }
 
         if (type === "image") {
-          const oldPath = join(getSaveImagePath(), value);
-          const newPath = join(await getDefaultSaveImagePath(), value);
+          // DB 中的 value 可能是完整绝对路径（新记录）或纯文件名（旧记录）。
+          // 旧逻辑无条件 join(saveImagePath, value)：value 是绝对路径时
+          // join 会把它粘到子目录后面，导致文件不存在，图片无法显示。
+          const dbValue = value;
+          const basePath = await getDefaultSaveImagePath();
+          const oldPath = join(getSaveImagePath(), dbValue);
+          const newPath = isAbsolutePath(dbValue)
+            ? dbValue
+            : join(basePath, dbValue);
 
           if (await exists(oldPath)) {
             await copyFile(oldPath, newPath);

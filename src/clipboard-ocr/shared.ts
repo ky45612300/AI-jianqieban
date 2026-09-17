@@ -27,7 +27,7 @@ interface CreateClipboardImageDisplayHistoryOptions {
   imagePath: string;
 }
 
-const isAbsolutePath = (path: string) => {
+export const isAbsolutePath = (path: string) => {
   return /^[a-zA-Z]:[\\/]/.test(path) || path.startsWith("\\\\");
 };
 
@@ -41,12 +41,13 @@ export const createClipboardImageDisplayHistory = <T extends { value: string }>(
 
 export const shouldAcceptClipboardImage = ({
   fileBytes,
-  reportedBytes,
+  reportedBytes: _reportedBytes,
 }: ShouldAcceptClipboardImageOptions) => {
-  const hasValidReportedBytes =
-    reportedBytes === undefined || reportedBytes > 0;
-
-  return hasValidReportedBytes && fileBytes > 0;
+  // 以磁盘文件实际大小为准：文件有内容（fileBytes > 0）就放行。
+  // 占位空图的文件本身是 0 字节，仍会被过滤；
+  // 而 reportedBytes 在 Windows 上对真实图片有时报 0（上报延迟/不可靠），
+  // 不能作为拒绝依据，否则会把真实图片误判为空图丢弃。
+  return fileBytes > 0;
 };
 
 export const resolveClipboardImageOcrPath = ({

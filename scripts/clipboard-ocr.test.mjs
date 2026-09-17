@@ -102,14 +102,16 @@ test("createClipboardImageDisplayHistory keeps database image value separate fro
   );
 });
 
-test("shouldAcceptClipboardImage rejects empty placeholder images", () => {
+test("shouldAcceptClipboardImage: 以磁盘文件实际大小为准，只有 0 字节文件才拒绝", () => {
+  // 上报值为 0 但文件有真实内容（Windows 上真实图片的常见情况）→ 放行
   assert.equal(
     shouldAcceptClipboardImage({
       fileBytes: 64_000,
       reportedBytes: 0,
     }),
-    false,
+    true,
   );
+  // 文件确实为空（占位图）→ 拒绝
   assert.equal(
     shouldAcceptClipboardImage({
       fileBytes: 0,
@@ -117,6 +119,14 @@ test("shouldAcceptClipboardImage rejects empty placeholder images", () => {
     }),
     false,
   );
+  assert.equal(
+    shouldAcceptClipboardImage({
+      fileBytes: 0,
+      reportedBytes: 0,
+    }),
+    false,
+  );
+  // 正常情况 → 放行
   assert.equal(
     shouldAcceptClipboardImage({
       fileBytes: 64_000,
